@@ -58,20 +58,29 @@
 
   .main { padding: 1rem 1.25rem 2rem; max-width: 1200px; }
 
-  /* ── Mode tabs ── */
+  /* ── Mode tabs — scrollable ── */
+  .mode-tabs-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border);
+    /* hide scrollbar visually */
+    scrollbar-width: none;
+  }
+  .mode-tabs-wrap::-webkit-scrollbar { display: none; }
   .mode-tabs {
     display: flex;
-    gap: 4px;
-    margin-bottom: 1.5rem;
-    border-bottom: 1px solid var(--border);
+    gap: 0;
+    white-space: nowrap;
+    min-width: max-content;
     padding-bottom: 0;
   }
   .mode-tab {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 11px;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    padding: 8px 16px;
+    padding: 8px 14px;
     border: 1px solid transparent;
     border-bottom: none;
     background: transparent;
@@ -81,6 +90,9 @@
     position: relative;
     bottom: -1px;
     transition: all 0.1s;
+    white-space: nowrap;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
   }
   .mode-tab.active {
     border-color: var(--border);
@@ -88,6 +100,8 @@
     background: var(--bg);
     color: var(--gold);
   }
+  .mode-tab.settings-tab { color: var(--text-mid); }
+  .mode-tab.settings-tab.active { color: var(--teal); }
   .mode-tab:hover:not(.active) { color: var(--text); }
 
   .panel { display: none; }
@@ -662,66 +676,39 @@
 
 <header>
   <div class="header-title" id="header-title">Steel Note Finder</div>
-  <div class="header-sub">Williams 400 · E9 · Frets 0–12 · v2026-03-19 17:33 MT</div>
+  <div class="header-sub">Williams 400 · E9 · Frets 0–12 · v2026-03-19 18:27 MT</div>
 </header>
 
 <div class="main">
-  <div class="mode-tabs" id="main-tabs">
-    <button class="mode-tab active" onclick="switchTab('setorder')">Set Order</button>
-    <button class="mode-tab" onclick="switchTab('songs')">Songs</button>
-    <button class="mode-tab" onclick="switchTab('copedent')">Copedent</button>
-    <button class="mode-tab" onclick="switchTab('finder')">Note Finder</button>
-  </div>
-
-
-  <!-- ══ SONGS PANEL ══ -->
-  <div class="panel" id="panel-songs">
-    <div class="song-nav" id="song-nav">
-      <button class="song-nav-btn" onclick="prevSong()" id="btn-prev">◀ Prev</button>
-      <span class="song-nav-title" id="song-nav-title">No songs yet</span>
-      <button class="song-nav-btn" onclick="nextSong()" id="btn-next">Next ▶</button>
-    </div>
-    <div id="song-chart-area">
-      <div class="no-result" style="margin-top:1rem">
-        Go to Set Order to add songs, then enter chords in each song tab.
-      </div>
+  <!-- Scrollable tab bar -->
+  <div class="mode-tabs-wrap">
+    <div class="mode-tabs" id="main-tabs">
+      <button class="mode-tab settings-tab active" onclick="switchTab('settings')" id="tab-settings">⚙ Settings</button>
+      <!-- Song tabs injected here by JS -->
     </div>
   </div>
 
-  <!-- ══ SET ORDER PANEL ══ -->
-  <div class="panel active" id="panel-setorder">
+  <!-- ══ SETTINGS PANEL ══ -->
+  <div class="panel active" id="panel-settings">
     <div class="selector-label">Set name</div>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:1.25rem">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:1.5rem">
       <input id="set-name-input" type="text" placeholder="e.g. Friday Night Set"
         style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;
                background:var(--bg2);border:1px solid var(--border2);color:var(--gold);
                padding:8px 12px;border-radius:3px;outline:none;flex:1;"
         oninput="updateSetName(this.value)" />
     </div>
-    <div class="selector-label">Song list — tap + to add, arrows to reorder</div>
+
+    <div class="selector-label">Songs — tap + to add, arrows to reorder</div>
     <div id="setorder-list" style="margin-top:0.75rem"></div>
     <button class="walk-btn" style="margin-top:1rem" onclick="addSong()">+ Add Song</button>
-  </div>
 
-  <!-- ══ COPEDENT PANEL ══ -->
-  <div class="panel" id="panel-copedent">
-    <div class="selector-label">Copedent — your guitar's tuning and pedal/lever changes</div>
+    <div class="selector-label" style="margin-top:2rem">Copedent — tuning &amp; pedal/lever changes</div>
     <div id="copedent-table-wrap" style="overflow-x:auto;margin-top:0.75rem"></div>
   </div>
 
-  <!-- ══ NOTE FINDER PANEL ══ -->
-  <div class="panel" id="panel-finder">
-    <div class="selector-label">Select notes — click to toggle</div>
-    <div class="note-grid" id="note-grid"></div>
-    <div class="summary" id="summary"></div>
-    <div class="neck-wrap">
-      <svg id="neck" viewBox="0 0 980 320" xmlns="http://www.w3.org/2000/svg"></svg>
-    </div>
-    <div class="legend-label" id="legend-label" style="display:none">Voicing key</div>
-    <div class="legend" id="legend"></div>
-    <div class="selector-label" style="margin-top:1.5rem;">Voicings — click to hide/show</div>
-    <div class="voicing-grid" id="voicing-grid"></div>
-  </div>
+  <!-- Song panels injected here by JS -->
+  <div id="song-panels-container"></div>
 
 </div>
 
@@ -942,36 +929,40 @@ function render() {
   ).join('');
 }
 
-// Build note buttons
-const noteGrid = document.getElementById('note-grid');
-chromatic.forEach(n => {
-  const btn = document.createElement('button');
-  btn.className = 'note-btn' + (activeNotes.has(n)?' active':'');
-  btn.textContent = n;
-  btn.onclick = () => {
-    if (activeNotes.has(n)) { activeNotes.delete(n); btn.classList.remove('active'); }
-    else { activeNotes.add(n); btn.classList.add('active'); }
-    render();
-  };
-  noteGrid.appendChild(btn);
-});
-
 // Build voicing toggle buttons
 const VOICING_LABELS = { open:'Open', A:'A', B:'B', 'A+B':'A+B', C:'C', LKL:'LKL', LKR:'LKR', RKL:'RKL', RKR:'RKR', LKV:'LKV' };
-const vGrid = document.getElementById('voicing-grid');
-VOICING_ORDER.forEach(v => {
-  const btn = document.createElement('button');
-  btn.className = 'voicing-btn active';
-  btn.innerHTML = `<span class="dot" style="background:${COLORS[v]}"></span>${VOICING_LABELS[v]}`;
-  btn.onclick = () => {
-    if (activeVoicings.has(v)) { activeVoicings.delete(v); btn.classList.remove('active'); }
-    else { activeVoicings.add(v); btn.classList.add('active'); }
-    render();
-  };
-  vGrid.appendChild(btn);
-});
 
-render();
+// Note finder DOM init — guarded since note finder panel is not in this build
+const noteGrid = document.getElementById('note-grid');
+if (noteGrid) {
+  chromatic.forEach(n => {
+    const btn = document.createElement('button');
+    btn.className = 'note-btn' + (activeNotes.has(n)?' active':'');
+    btn.textContent = n;
+    btn.onclick = () => {
+      if (activeNotes.has(n)) { activeNotes.delete(n); btn.classList.remove('active'); }
+      else { activeNotes.add(n); btn.classList.add('active'); }
+      render();
+    };
+    noteGrid.appendChild(btn);
+  });
+
+  const vGrid = document.getElementById('voicing-grid');
+  if (vGrid) {
+    VOICING_ORDER.forEach(v => {
+      const btn = document.createElement('button');
+      btn.className = 'voicing-btn active';
+      btn.innerHTML = `<span class="dot" style="background:${COLORS[v]}"></span>${VOICING_LABELS[v]}`;
+      btn.onclick = () => {
+        if (activeVoicings.has(v)) { activeVoicings.delete(v); btn.classList.remove('active'); }
+        else { activeVoicings.add(v); btn.classList.add('active'); }
+        render();
+      };
+      vGrid.appendChild(btn);
+    });
+  }
+  render();
+}
 
 // ═══════════════════════════════════════════════════════
 //  NECK POSITION HELPERS (shared by walk engine)
@@ -1031,8 +1022,152 @@ function allPositionsForStep(melodyNote, harmonyNote) {
 }
 
 // ═══════════════════════════════════════════════════════
-//  WALK ENGINE — string-pair voice leading model
+//  KEY / MODE MAP ENGINE
 // ═══════════════════════════════════════════════════════
+
+const MODES = [
+  { name:'Ionian',     label:'Major',      intervals:[0,2,4,5,7,9,11], chordTones:[0,4,7]    },
+  { name:'Dorian',     label:'Dorian',     intervals:[0,2,3,5,7,9,10], chordTones:[0,3,7]    },
+  { name:'Phrygian',   label:'Phrygian',   intervals:[0,1,3,5,7,8,10], chordTones:[0,3,7]    },
+  { name:'Lydian',     label:'Lydian',     intervals:[0,2,4,6,7,9,11], chordTones:[0,4,7]    },
+  { name:'Mixolydian', label:'Mixolydian', intervals:[0,2,4,5,7,9,10], chordTones:[0,4,7,10] },
+  { name:'Aeolian',    label:'Minor',      intervals:[0,2,3,5,7,8,10], chordTones:[0,3,7]    },
+  { name:'Locrian',    label:'Locrian',    intervals:[0,1,3,5,6,8,10], chordTones:[0,3,6]    },
+  { name:'Pentatonic', label:'Pentatonic', intervals:[0,2,4,7,9],      chordTones:[0,4,7]    },
+  { name:'Blues',      label:'Blues',      intervals:[0,3,5,6,7,10],   chordTones:[0,3,7,10] },
+];
+
+const DEGREE_NAMES = {
+  0:'1', 1:'b2', 2:'2', 3:'b3', 4:'3', 5:'4',
+  6:'b5', 7:'5', 8:'b6', 9:'6', 10:'b7', 11:'7'
+};
+
+const CHORD_QUALITY_INTERVALS = {
+  maj:[0,4,7], min:[0,3,7], dom7:[0,4,7,10], min7:[0,3,7,10],
+  maj7:[0,4,7,11], dim:[0,3,6], dim7:[0,3,6,9], aug:[0,4,8],
+  sus2:[0,2,7], sus4:[0,5,7], add9:[0,2,4,7], '9':[0,4,7,10,2],
+  min9:[0,3,7,10,2], maj9:[0,4,7,11,2], '6':[0,4,7,9], min6:[0,3,7,9],
+};
+
+// ── Chord parser ──────────────────────────────────────
+function parseChordName(raw) {
+  const s = raw.trim().replace(/♭/g,'b').replace(/△/g,'maj7').replace(/ø/g,'dim7');
+  const rootMatch = s.match(/^([A-Ga-g][#b]?)/);
+  if (!rootMatch) return null;
+  let root = rootMatch[1].charAt(0).toUpperCase() + rootMatch[1].slice(1);
+  const flatMap = {'Db':'C#','Eb':'D#','Fb':'E','Gb':'F#','Ab':'G#','Bb':'A#','Cb':'B'};
+  if (flatMap[root]) root = flatMap[root];
+  if (!chromatic.includes(root)) return null;
+  const suffix = s.slice(rootMatch[0].length).toLowerCase().replace(/\s+/g,'');
+  let quality = 'maj';
+  if      (/^(min7|m7|-7)/.test(suffix))  quality = 'min7';
+  else if (/^(maj7|M7)/.test(suffix))     quality = 'maj7';
+  else if (/^(dim7|°7)/.test(suffix))     quality = 'dim7';
+  else if (/^(min9|m9)/.test(suffix))     quality = 'min9';
+  else if (/^(maj9|M9)/.test(suffix))     quality = 'maj9';
+  else if (/^(min6|m6)/.test(suffix))     quality = 'min6';
+  else if (/^(min|m|-|°m)/.test(suffix) && !/^(maj)/.test(suffix)) quality = 'min';
+  else if (/^(dom7|7)/.test(suffix))      quality = 'dom7';
+  else if (/^(dim|°)/.test(suffix))       quality = 'dim';
+  else if (/^(aug|\+)/.test(suffix))      quality = 'aug';
+  else if (/^(sus2)/.test(suffix))        quality = 'sus2';
+  else if (/^(sus4|sus)/.test(suffix))    quality = 'sus4';
+  else if (/^(add9)/.test(suffix))        quality = 'add9';
+  else if (/^9/.test(suffix))             quality = '9';
+  else if (/^6/.test(suffix))             quality = '6';
+  else if (/^(maj|M)/.test(suffix))       quality = 'maj';
+  return { root, quality, rootIdx: noteIdx(root) };
+}
+
+function chordToneNotes(root, quality) {
+  const ri = noteIdx(root);
+  return (CHORD_QUALITY_INTERVALS[quality]||[0,4,7]).map(s => chromatic[(ri+s)%12]);
+}
+
+// ── Text parser ───────────────────────────────────────
+function parseSongText(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  const sections = [];
+  const h1 = /^(.+?)\s+chords?\s*:?\s*$/i;
+  const h2 = /^([a-z][a-z\s\d#]*?)\s*:\s*(.+)$/i;
+  const h3 = /^([a-z][a-z\s\d#]*?)\s*:\s*$/i;
+  let cur = null;
+  for (const line of lines) {
+    if (/^[-|=\s]+$/.test(line)) continue;
+    const m2 = line.match(h2);
+    if (m2) {
+      const label = normLabel(m2[1]), chords = extractChords(m2[2]);
+      if (chords.length > 0) {
+        const ex = sections.find(s => s.label.toLowerCase() === label.toLowerCase());
+        if (ex) { ex.chords.push(...chords.map(c=>({name:c,active:true}))); cur = ex; }
+        else { cur = {label, chords:chords.map(c=>({name:c,active:true})), active:true}; sections.push(cur); }
+        continue;
+      }
+    }
+    const m3 = line.match(h3);
+    if (m3) { cur = {label:normLabel(m3[1]), chords:[], active:true}; sections.push(cur); continue; }
+    const m1 = line.match(h1);
+    if (m1) { cur = {label:normLabel(m1[1]), chords:[], active:true}; sections.push(cur); continue; }
+    const chords = extractChords(line);
+    if (chords.length > 0) {
+      if (!cur) { cur = {label:'Section 1', chords:[], active:true}; sections.push(cur); }
+      cur.chords.push(...chords.map(c=>({name:c,active:true})));
+    }
+  }
+  let n=0;
+  for (const s of sections) {
+    if (s.label.toLowerCase()==='chords') { n++; s.label=`Section ${n}`; }
+    s.chords = s.chords.filter((c,i,a)=>i===0||c.name!==a[i-1].name);
+  }
+  return sections;
+}
+
+function normLabel(r) { return r.trim().replace(/\b\w/g,c=>c.toUpperCase()).replace(/\s+/g,' '); }
+function extractChords(s) {
+  return s.split(/[\s|,]+/).map(t=>t.trim()).filter(t=>t&&parseChordName(t)!==null);
+}
+
+// ── Key detection ─────────────────────────────────────
+function detectKey(chordNames) {
+  const parsed = chordNames.map(c=>parseChordName(c)).filter(Boolean);
+  if (!parsed.length) return [];
+  const rootFreq = {};
+  for (const ch of parsed) rootFreq[ch.root] = (rootFreq[ch.root]||0)+1;
+  const cadenceVotes = {};
+  for (let i=0; i<parsed.length-1; i++) {
+    const a=parsed[i], b=parsed[i+1];
+    const interval=(noteIdx(b.root)-noteIdx(a.root)+12)%12;
+    if (interval===5&&(a.quality==='dom7'||a.quality==='maj'))
+      cadenceVotes[b.root]=(cadenceVotes[b.root]||0)+3;
+    if (interval===7&&b.quality==='maj')
+      cadenceVotes[a.root]=(cadenceVotes[a.root]||0)+1;
+  }
+  const results=[];
+  for (const root of chromatic) {
+    const ri=noteIdx(root);
+    for (const mode of MODES) {
+      if (mode.name==='Pentatonic'||mode.name==='Blues') continue;
+      const scaleNotes=new Set(mode.intervals.map(s=>chromatic[(ri+s)%12]));
+      let score=0, inKey=0;
+      for (const ch of parsed) {
+        const tones=chordToneNotes(ch.root,ch.quality);
+        const pct=tones.filter(t=>scaleNotes.has(t)).length/tones.length;
+        if (pct>=0.75){inKey++;score+=pct*2;}else{score+=pct*0.5;}
+      }
+      const tonicChords=parsed.filter(ch=>ch.root===root);
+      const tonicIsMajor=tonicChords.some(ch=>['maj','dom7','maj7'].includes(ch.quality));
+      const tonicIsMinor=tonicChords.some(ch=>['min','min7'].includes(ch.quality));
+      if (tonicIsMajor&&['Ionian','Mixolydian','Lydian'].includes(mode.name)) score+=2;
+      if (tonicIsMinor&&['Aeolian','Dorian','Phrygian'].includes(mode.name)) score+=2;
+      score+=(rootFreq[root]||0)*0.8;
+      score+=(cadenceVotes[root]||0);
+      results.push({root,mode:mode.name,score,coverage:inKey/parsed.length,outChords:[]});
+    }
+  }
+  return results.sort((a,b)=>b.score-a.score);
+}
+
+
 
 // Returns all notes reachable on a single string at a given fret
 // as [{note, voicing}]
@@ -1061,60 +1196,8 @@ function stringNotesAt(str, fret) {
   return results;
 }
 
-// Voicing cost for a single string's voicing
-function voicingCost(v) { return VOICING_COST[v] || 0; }
 
-// Are two voicings compatible when applied simultaneously?
-function compatible(v1, v2) {
-  if (v1 === v2) return true;
-  // A and C both raise string 5 — using both is redundant/conflicting
-  if ((v1==='A'&&v2==='C')||(v1==='C'&&v2==='A')) return false;
-  return true;
-}
 
-// Prefer A pedal over C pedal when only string 5 is involved
-// (C also moves string 4 which we may not want)
-function preferredVoicing(v, str) {
-  // If C pedal is used just for string 5, A pedal does the same with less side effect
-  return v; // keep as-is, cost model handles this
-}
-
-// Find all ways to play (noteA on strA) AND (noteB on strB) at the same fret
-// Returns [{fret, strA:{note,voicing}, strB:{note,voicing}, cost}]
-function findTargetChordPosition(root, quality, preferHigh) {
-  // Chord tones
-  const tones = CHORD_TONES[quality].map(s => shiftNote(root, s));
-  // We want two chord tones — try root+3rd, root+5th, 3rd+5th, root+7th
-  const tonePairs = [];
-  for (let i = 0; i < tones.length; i++)
-    for (let j = i+1; j < tones.length; j++)
-      tonePairs.push([tones[i], tones[j]]);
-
-  let best = null;
-  for (const [strA, strB] of STRING_PAIRS) {
-    for (const [tA, tB] of tonePairs) {
-      // Try both assignments
-      for (const [nA, nB] of [[tA,tB],[tB,tA]]) {
-        const pairs = findPairsOnStrings(nA, strA, nB, strB);
-        for (const p of pairs) {
-          if (!best || p.cost < best.cost) {
-            best = { strHigh: strA, strLow: strB,
-                     highPos: p.strA, lowPos: p.strB,
-                     fret: p.fret, cost: p.cost };
-          }
-        }
-      }
-    }
-  }
-  return best;
-}
-
-// ── Global DP walk solver ─────────────────────────────────
-// Given the harmonized scale steps, locked string pair and voice assignment,
-// and motion mode, find the best sequence of fret positions.
-//
-// Each step: { melody (note for strHigh), harmony (note for strLow) }
-// Returns array of { fret, highPos, lowPos, cost } or null per step
 
 function romanNumeral(chordRoot, chordQuality, keyRoot, modeIntervals) {
   const ri   = noteIdx(keyRoot);
@@ -1167,7 +1250,29 @@ function romanNumeral(chordRoot, chordQuality, keyRoot, modeIntervals) {
   return roman + suffix + secondary;
 }
 
-// ── Chord function classifier ────────────────────────
+// ── Pill class + label builder ────────────────────────
+function chordPillInfo(chName, keyRoot, modeIntervals) {
+  const p = parseChordName(chName);
+  if (!p || !modeIntervals) return { cls: 'chord-pill', label: chName, roman: '' };
+  const fn    = chordFunction(p, keyRoot, modeIntervals);
+  const roman = romanNumeral(p.root, p.quality, keyRoot, modeIntervals);
+  const fnCls = fn === 'root'      ? 'is-root'
+              : fn === 'diatonic'  ? 'in-key'
+              : fn === 'secondary' ? 'secondary'
+              : fn === 'borrowed'  ? 'borrowed'
+              : 'chromatic';
+  return { cls: 'chord-pill ' + fnCls, label: chName + ' [' + roman + ']', roman, fn };
+}
+
+// _computeKeyMapCore — alias used by computeKeyMapSong
+function _computeKeyMapCore(songId, wCov, wEase, wChord) {
+  computeKeyMap(songId, wCov, wEase, wChord);
+}
+
+// renderSongChartArea — legacy stub (no-op in new per-tab model)
+function renderSongChartArea() {}
+
+
 // Returns 'root' | 'diatonic' | 'secondary' | 'borrowed' | 'chromatic'
 function chordFunction(parsedChord, keyRoot, modeIntervals) {
   const { root, quality } = parsedChord;
@@ -1214,76 +1319,6 @@ function chordFunction(parsedChord, keyRoot, modeIntervals) {
 }
 
 // ── Key detection ─────────────────────────────────────
-function detectKey(chordNames) {
-  const parsed = chordNames.map(c=>parseChordName(c)).filter(Boolean);
-  if (!parsed.length) return [];
-
-  // Root frequency — most common root gets tonic bonus
-  const rootFreq = {};
-  for (const ch of parsed) rootFreq[ch.root] = (rootFreq[ch.root]||0) + 1;
-
-  // Cadential pairs — V(7)→I motions strongly imply I as tonic
-  const cadenceVotes = {}; // root -> cadence score
-  for (let i=0; i<parsed.length-1; i++) {
-    const a=parsed[i], b=parsed[i+1];
-    const interval = (noteIdx(b.root)-noteIdx(a.root)+12)%12;
-    // P4 up (V→I) or P5 down — strong cadence
-    if (interval===5 && (a.quality==='dom7'||a.quality==='maj')) {
-      cadenceVotes[b.root] = (cadenceVotes[b.root]||0) + 3;
-    }
-    // Half cadence: ending on a major chord after leaving tonic area
-    if (interval===7 && b.quality==='maj') {
-      cadenceVotes[a.root] = (cadenceVotes[a.root]||0) + 1;
-    }
-  }
-
-  const results = [];
-  for (const root of chromatic) {
-    const ri = noteIdx(root);
-    for (const mode of MODES) {
-      if (mode.name==='Pentatonic'||mode.name==='Blues') continue;
-      const scaleNotes = new Set(mode.intervals.map(s=>chromatic[(ri+s)%12]));
-      let score=0, inKey=0;
-      const outChords=[];
-      for (const ch of parsed) {
-        const tones = chordToneNotes(ch.root, ch.quality);
-        const pct   = tones.filter(t=>scaleNotes.has(t)).length/tones.length;
-        if (pct>=0.75) { inKey++; score+=pct*2; } else { outChords.push(ch.root); score+=pct*0.5; }
-      }
-
-      // Tiebreaker 1: major/dom7 quality on the proposed tonic favours Ionian/Mixolydian
-      const tonicChords = parsed.filter(ch=>ch.root===root);
-      const tonicIsMajor = tonicChords.some(ch=>['maj','dom7','maj7'].includes(ch.quality));
-      const tonicIsMinor = tonicChords.some(ch=>['min','min7'].includes(ch.quality));
-      if (tonicIsMajor && (mode.name==='Ionian'||mode.name==='Mixolydian'||mode.name==='Lydian')) score+=2;
-      if (tonicIsMinor && (mode.name==='Aeolian'||mode.name==='Dorian'||mode.name==='Phrygian')) score+=2;
-
-      // Tiebreaker 2: root frequency — proposed tonic appearing more = more likely tonic
-      score += (rootFreq[root]||0) * 0.8;
-
-      // Tiebreaker 3: cadential motion into proposed tonic
-      score += (cadenceVotes[root]||0);
-
-      results.push({root, mode:mode.name, score, coverage:inKey/parsed.length, outChords});
-    }
-  }
-  return results.sort((a,b)=>b.score-a.score);
-}
-
-// ── Pill class + label builder ───────────────────────
-function chordPillInfo(chName, keyRoot, modeIntervals) {
-  const p = parseChordName(chName);
-  if (!p || !modeIntervals) return { cls: 'chord-pill', label: chName, roman: '' };
-  const fn     = chordFunction(p, keyRoot, modeIntervals);
-  const roman  = romanNumeral(p.root, p.quality, keyRoot, modeIntervals);
-  const fnCls  = fn === 'root' ? 'is-root'
-               : fn === 'diatonic'   ? 'in-key'
-               : fn === 'secondary'  ? 'secondary'
-               : fn === 'borrowed'   ? 'borrowed'
-               : 'chromatic';
-  return { cls: 'chord-pill ' + fnCls, label: chName + ' [' + roman + ']', roman, fn };
-}
-
 // ── State ─────────────────────────────────────────────
 let songSections  = [];
 let detectedKey   = null;
@@ -1291,7 +1326,7 @@ let keyRoot       = 'E';
 let keyMode       = 'Mixolydian';
 let keyOverride   = false;
 let nodeDisplay   = 'note';   // 'note' | 'voicing' | 'degree' | 'both'
-const keyVoicings = new Set(VOICING_ORDER);
+let keyVoicings = new Set(VOICING_ORDER);
 let mapRendered   = false;
 let soloChord     = null; // {name, root, quality} or null
 let fbdNoteMode   = 'note'; // 'note' | 'degree' for fret breakdown dots
@@ -1644,26 +1679,27 @@ function setFbdMode(mode, btn) {
   btn.classList.add('active');
   // Rebuild with new mode
   const fret = parseInt(panel.dataset.fret);
-  const container = document.getElementById('fret-breakdown-container');
-  if (container) container.innerHTML = buildFretBreakdown(fret);
+  const container = document.getElementById('fret-breakdown-container-' + activeSongId);
+  if (container) { loadSongState(activeSongId); container.innerHTML = buildFretBreakdown(fret); saveSongState(activeSongId); }
 }
 
 function closeFretBreakdown() {
-  const container = document.getElementById('fret-breakdown-container');
+  const container = document.getElementById('fret-breakdown-container-' + activeSongId);
   if (container) container.innerHTML = '';
 }
 
 // ── Main compute ──────────────────────────────────────
-function computeKeyMap() {
+function computeKeyMap(songId, wCov, wEase, wChord) {
   mapRendered = true;
   const mode       = MODES.find(m=>m.name===keyMode)||MODES[0];
   const ri         = noteIdx(keyRoot);
   const scaleArr   = mode.intervals.map(s=>chromatic[(ri+s)%12]);
   const scaleNotes = new Set(scaleArr);
   const ctSet      = new Set(mode.chordTones.map(s=>chromatic[(ri+s)%12]));
-  const wCov  = parseInt(document.getElementById('w-coverage').value);
-  const wEase = parseInt(document.getElementById('w-ease').value);
-  const wChord= parseInt(document.getElementById('w-chord').value);
+  // Use passed weights if provided, otherwise try to read from song-specific sliders
+  if (wCov  === undefined) wCov  = parseInt(document.getElementById('w-coverage-'+(songId||''))?.value || 6);
+  if (wEase === undefined) wEase = parseInt(document.getElementById('w-ease-'+(songId||''))?.value || 4);
+  if (wChord=== undefined) wChord= parseInt(document.getElementById('w-chord-'+(songId||''))?.value || 5);
 
   const scores=[];
   for (let f=0;f<=12;f++) {
@@ -1709,7 +1745,7 @@ function computeKeyMap() {
   const dotNotes = visibleNotes.size > 0 ? visibleNotes : scaleNotes;
   const neckSvg = buildKeyNeck(normed, scaleNotes, dotNotes, ctSet, scaleArr);
 
-  document.getElementById('key-result').innerHTML=`
+  document.getElementById('key-result-' + songId).innerHTML=`
     <div class="key-result-title">${keyRoot} ${mode.label}</div>
     <div class="key-scale-notes">${noteLegend}
       <span style="margin-left:1rem;font-size:9px;color:var(--text-dim)">
@@ -1719,9 +1755,9 @@ function computeKeyMap() {
       </span>
     </div>
     <div class="key-heat-label">Top 5 positions — long press to see chord voicings</div>
-    <div class="key-fret-cards" id="top5-cards-container">${cards}</div>
-    <div id="fret-breakdown-container"></div>
-    <div id="key-section-cards"></div>
+    <div class="key-fret-cards" id="top5-cards-container-${songId}">${cards}</div>
+    <div id="fret-breakdown-container-${songId}"></div>
+    <div id="key-section-cards-${songId}"></div>
     <div class="key-heat-label">Playability heatmap</div>
     <div class="neck-wrap">
       <svg id="neck3" viewBox="0 0 980 380" xmlns="http://www.w3.org/2000/svg">${neckSvg}</svg>
@@ -1733,8 +1769,8 @@ function computeKeyMap() {
     </div>`;
 
   // Wire long-press on top-5 cards to show fret chord breakdown
-  const top5Container = document.getElementById('top5-cards-container');
-  const breakdownContainer = document.getElementById('fret-breakdown-container');
+  const top5Container = document.getElementById('top5-cards-container-' + songId);
+  const breakdownContainer = document.getElementById('fret-breakdown-container-' + songId);
   if (top5Container && breakdownContainer) {
     top5Container.querySelectorAll('.key-fret-card').forEach((card, i) => {
       const fret = ranked[i].fret;
@@ -1761,7 +1797,7 @@ function computeKeyMap() {
 
   // Build interactive section cards near the map
   if (songSections.length) {
-    const container = document.getElementById('key-section-cards');
+    const container = document.getElementById('key-section-cards-' + songId);
     if (container) {
       const header = document.createElement('div');
       header.className='key-heat-label';
@@ -1956,250 +1992,510 @@ function buildKeyNeck(normed, scaleNotes, dotNotes, ctSet, scaleArr) {
 }
 
 // ═══════════════════════════════════════════════════════
-//  SONG MANAGEMENT
+//  SONG & TAB MANAGEMENT
 // ═══════════════════════════════════════════════════════
 
-// Each song: { name, chartText, state:{keyRoot,keyMode,sections} }
-let setName = '';
+let songs    = [];   // [{id, name, state}]
+let setName  = '';
+let nextId   = 1;
 
-function updateSetName(val) {
-  setName = val;
-  const el = document.getElementById('header-title');
-  if (el) el.textContent = val || 'Steel Note Finder';
-}
-let songs = [];
-let currentSongIdx = 0;
-
-// Per-song state — each song gets its own key/mode state
 function defaultSongState() {
   return {
-    keyRoot: 'E', keyMode: 'Mixolydian',
-    songSections: [], detectedKey: null,
-    keyOverride: false, soloChord: null, soloSection: null,
-    mapRendered: false, nodeDisplay: 'note', fbdNoteMode: 'note',
+    chartText:   '',
+    keyRoot:     'E',
+    keyMode:     'Mixolydian',
+    songSections:[],
+    detectedKey: null,
+    keyOverride: false,
+    soloChord:   null,
+    soloSection: null,
+    mapRendered: false,
+    nodeDisplay: 'note',
+    fbdNoteMode: 'note',
   };
 }
 
+// ── Add / remove songs ────────────────────────────────
 function addSong(name) {
-  const songName = name || `Song ${songs.length + 1}`;
-  songs.push({ name: songName, state: defaultSongState() });
+  const id   = nextId++;
+  const song = { id, name: name || `Song ${id}`, state: defaultSongState() };
+  songs.push(song);
+  createSongPanel(song);
+  createSongTab(song);
   renderSetOrder();
-  loadSong(songs.length - 1);
-  switchTab('songs');
+  switchTab('song-' + id);
 }
 
-function loadSong(idx) {
-  if (idx < 0 || idx >= songs.length) return;
-  currentSongIdx = idx;
-
-  // Save current state back
-  const st = songs[idx].state;
-  // Restore state
-  keyRoot        = st.keyRoot;
-  keyMode        = st.keyMode;
-  songSections   = st.songSections;
-  detectedKey    = st.detectedKey;
-  keyOverride    = st.keyOverride;
-  soloChord      = st.soloChord;
-  soloSection    = st.soloSection;
-  mapRendered    = st.mapRendered;
-  nodeDisplay    = st.nodeDisplay;
-  fbdNoteMode    = st.fbdNoteMode;
-
-  // Sync UI
-  syncKeyGrids();
-  document.querySelectorAll('.node-disp-btn').forEach(b =>
-    b.classList.toggle('active', b.dataset.mode === nodeDisplay)
-  );
-
-  // Update nav
-  const navTitle = document.getElementById('song-nav-title');
-  if (navTitle) navTitle.textContent = `${idx+1}. ${songs[idx].name}`;
-  document.getElementById('btn-prev').disabled = idx === 0;
-  document.getElementById('btn-next').disabled = idx === songs.length - 1;
-
-  // Render the song chart area
-  // Restore set name input if we ever persist state
-const setNameInput = document.getElementById('set-name-input');
-if (setNameInput && setName) setNameInput.value = setName;
-renderSetOrder();
+function deleteSong(id) {
+  const song = songs.find(s => s.id === id);
+  if (!song) return;
+  if (!confirm(`Delete "${song.name}"?`)) return;
+  songs = songs.filter(s => s.id !== id);
+  // Remove tab and panel
+  const tab   = document.getElementById('tab-song-' + id);
+  const panel = document.getElementById('panel-song-' + id);
+  if (tab)   tab.remove();
+  if (panel) panel.remove();
+  renderSetOrder();
+  // Switch to settings if no songs left, else first song
+  if (songs.length) switchTab('song-' + songs[0].id);
+  else switchTab('settings');
 }
 
-function saveSongState(idx) {
-  if (idx < 0 || idx >= songs.length) return;
-  songs[idx].state = {
-    keyRoot, keyMode, songSections: JSON.parse(JSON.stringify(songSections)),
-    detectedKey, keyOverride, soloChord, soloSection,
-    mapRendered, nodeDisplay, fbdNoteMode,
-  };
+function renameSong(id, name) {
+  const song = songs.find(s => s.id === id);
+  if (!song) return;
+  song.name = name;
+  const tab = document.getElementById('tab-song-' + id);
+  if (tab) tab.textContent = name;
+  // Update title inside panel if currently shown
+  const titleEl = document.getElementById('song-title-' + id);
+  if (titleEl) titleEl.value = name;
 }
 
-function prevSong() {
-  saveSongState(currentSongIdx);
-  loadSong(currentSongIdx - 1);
+function moveSong(id, dir) {
+  const idx = songs.findIndex(s => s.id === id);
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= songs.length) return;
+  [songs[idx], songs[newIdx]] = [songs[newIdx], songs[idx]];
+  // Reorder tabs in DOM
+  const tabsEl = document.getElementById('main-tabs');
+  const settingsTab = document.getElementById('tab-settings');
+  // Rebuild song tabs in new order
+  songs.forEach(s => {
+    const t = document.getElementById('tab-song-' + s.id);
+    if (t) tabsEl.appendChild(t);
+  });
+  renderSetOrder();
 }
-function nextSong() {
-  saveSongState(currentSongIdx);
-  loadSong(currentSongIdx + 1);
+
+// ── Create DOM elements for a song ───────────────────
+function createSongTab(song) {
+  const tab = document.createElement('button');
+  tab.className = 'mode-tab';
+  tab.id = 'tab-song-' + song.id;
+  tab.textContent = song.name;
+  tab.onclick = () => switchTab('song-' + song.id);
+  document.getElementById('main-tabs').appendChild(tab);
 }
 
-function renderSongChartArea() {
-  const area = document.getElementById('song-chart-area');
-  if (!area) return;
+function createSongPanel(song) {
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.id = 'panel-song-' + song.id;
+  panel.innerHTML = buildSongPanelHTML(song);
+  document.getElementById('song-panels-container').appendChild(panel);
+  // Wire up dynamic elements
+  initSongPanel(song.id);
+}
 
-  if (!songs.length) {
-    area.innerHTML = '<div class="no-result" style="margin-top:1rem">Go to Set Order to add songs.</div>';
-    return;
-  }
-
-  // Inject the full key/mode chart UI for this song
-  area.innerHTML = `
-    <!-- SONG INPUT -->
-    <div class="song-input-wrap">
-      <div class="selector-label">Paste chord chart</div>
-      <textarea id="song-paste" class="song-paste"
-        placeholder="Paste your chord chart here&#10;&#10;Verse Chords&#10;E | G#m | F#m&#10;&#10;Chorus:&#10;C#m | A | B7"></textarea>
-      <button class="walk-btn" style="margin-top:8px;margin-bottom:0" onclick="parseSong()">▶ Parse Chart</button>
+function buildSongPanelHTML(song) {
+  const st = song.state;
+  return `
+    <!-- Song title -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;padding-bottom:0.75rem;border-bottom:1px solid var(--border)">
+      <input id="song-title-${song.id}" type="text" value="${song.name}"
+        style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--gold);
+               background:none;border:none;outline:none;flex:1;border-bottom:1px solid transparent;"
+        onfocus="this.style.borderBottomColor='var(--gold-dim)'"
+        onblur="this.style.borderBottomColor='transparent';renameSong(${song.id},this.value)"
+        onchange="renameSong(${song.id},this.value)" />
     </div>
 
-    <!-- PARSED SECTIONS -->
-    <div id="song-sections" style="display:${songSections.length?'':'none'}">
+    <!-- Chart input -->
+    <div class="song-input-wrap">
+      <div class="selector-label">Paste chord chart</div>
+      <textarea id="song-paste-${song.id}" class="song-paste"
+        placeholder="Paste your chord chart here&#10;&#10;Verse Chords&#10;E | G#m | F#m&#10;&#10;Chorus:&#10;C#m | A | B7">${st.chartText||''}</textarea>
+      <button class="walk-btn" style="margin-top:8px;margin-bottom:0"
+        onclick="parseSong(${song.id})">▶ Parse Chart</button>
+    </div>
+
+    <!-- Parsed sections -->
+    <div id="song-sections-${song.id}" style="display:${st.songSections.length?'':'none'}">
       <div class="selector-label" style="margin-top:1.25rem">Sections — tap label to rename</div>
-      <div id="section-list"></div>
-      <div class="song-key-row" id="song-key-row" style="display:${detectedKey?'':'none'}">
-        <div class="song-key-detected" id="song-key-detected"></div>
-        <button class="song-key-override-btn" onclick="toggleKeyOverride()">Override</button>
+      <div id="section-list-${song.id}"></div>
+      <div class="song-key-row" id="song-key-row-${song.id}" style="display:${st.detectedKey?'':'none'}">
+        <div class="song-key-detected" id="song-key-detected-${song.id}"></div>
+        <button class="song-key-override-btn" onclick="toggleKeyOverride(${song.id})">Override</button>
       </div>
-      <div id="key-override-panel" style="display:${keyOverride?'':'none'}">
+      <div id="key-override-panel-${song.id}" style="display:${st.keyOverride?'':'none'}">
         <div class="walk-config" style="margin-top:0.75rem">
           <div class="config-group">
             <div class="config-label">Key root</div>
-            <div class="note-select-mini" id="key-root-grid"></div>
+            <div class="note-select-mini" id="key-root-grid-${song.id}"></div>
           </div>
           <div class="config-group">
             <div class="config-label">Mode</div>
-            <div class="key-mode-grid" id="key-mode-grid"></div>
+            <div class="key-mode-grid" id="key-mode-grid-${song.id}"></div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- MANUAL KEY -->
-    <div id="manual-key-panel" style="display:${songSections.length?'none':''}">
-      <div class="walk-config">
+    <!-- Manual key (no song yet) -->
+    <div id="manual-key-panel-${song.id}" style="display:${st.songSections.length?'none':''}">
+      <div class="walk-config" style="margin-top:0.75rem">
         <div class="config-group">
           <div class="config-label">Key root</div>
-          <div class="note-select-mini" id="key-root-grid-manual"></div>
+          <div class="note-select-mini" id="key-root-grid-manual-${song.id}"></div>
         </div>
         <div class="config-group">
           <div class="config-label">Mode</div>
-          <div class="key-mode-grid" id="key-mode-grid-manual"></div>
+          <div class="key-mode-grid" id="key-mode-grid-manual-${song.id}"></div>
         </div>
       </div>
     </div>
 
-    <!-- NODE DISPLAY TOGGLE -->
-    <div style="margin-bottom:1rem;margin-top:0.75rem">
+    <!-- Node display toggle -->
+    <div style="margin:0.75rem 0 1rem">
       <div class="selector-label" style="margin-bottom:8px">Node label</div>
-      <div class="node-display-toggle" id="node-display-toggle">
-        <button class="node-disp-btn ${nodeDisplay==='note'?'active':''}"         data-mode="note"           onclick="setNodeDisplay(this)">Note</button>
-        <button class="node-disp-btn ${nodeDisplay==='voicing'?'active':''}"      data-mode="voicing"        onclick="setNodeDisplay(this)">Voicing</button>
-        <button class="node-disp-btn ${nodeDisplay==='degree'?'active':''}"       data-mode="degree"         onclick="setNodeDisplay(this)">Degree</button>
-        <button class="node-disp-btn ${nodeDisplay==='note-voicing'?'active':''}" data-mode="note-voicing"   onclick="setNodeDisplay(this)">Note / Voicing</button>
-        <button class="node-disp-btn ${nodeDisplay==='degree-voicing'?'active':''}" data-mode="degree-voicing" onclick="setNodeDisplay(this)">Degree / Voicing</button>
+      <div class="node-display-toggle" id="node-display-toggle-${song.id}">
+        <button class="node-disp-btn ${st.nodeDisplay==='note'?'active':''}"           data-mode="note"           onclick="setNodeDisplaySong(${song.id},this)">Note</button>
+        <button class="node-disp-btn ${st.nodeDisplay==='voicing'?'active':''}"        data-mode="voicing"        onclick="setNodeDisplaySong(${song.id},this)">Voicing</button>
+        <button class="node-disp-btn ${st.nodeDisplay==='degree'?'active':''}"         data-mode="degree"         onclick="setNodeDisplaySong(${song.id},this)">Degree</button>
+        <button class="node-disp-btn ${st.nodeDisplay==='note-voicing'?'active':''}"   data-mode="note-voicing"   onclick="setNodeDisplaySong(${song.id},this)">Note / Voicing</button>
+        <button class="node-disp-btn ${st.nodeDisplay==='degree-voicing'?'active':''}" data-mode="degree-voicing" onclick="setNodeDisplaySong(${song.id},this)">Degree / Voicing</button>
       </div>
     </div>
 
-    <div id="key-result"></div>
+    <div id="key-result-${song.id}"></div>
 
-    <!-- SCORE WEIGHTS + VOICING FILTER -->
-    <div class="walk-config" style="margin-top:1.5rem" id="key-controls-below">
+    <!-- Score weights + voicing -->
+    <div class="walk-config" style="margin-top:1.5rem">
       <div class="config-group">
         <div class="config-label">Score weights</div>
         <div class="key-weight-row">
           <label class="key-weight-label">Coverage</label>
-          <input type="range" id="w-coverage" min="0" max="10" value="6" class="key-slider">
-          <span class="key-weight-val" id="wv-coverage">6</span>
+          <input type="range" id="w-coverage-${song.id}" min="0" max="10" value="6" class="key-slider">
+          <span class="key-weight-val" id="wv-coverage-${song.id}">6</span>
         </div>
         <div class="key-weight-row">
           <label class="key-weight-label">Ease</label>
-          <input type="range" id="w-ease" min="0" max="10" value="4" class="key-slider">
-          <span class="key-weight-val" id="wv-ease">4</span>
+          <input type="range" id="w-ease-${song.id}" min="0" max="10" value="4" class="key-slider">
+          <span class="key-weight-val" id="wv-ease-${song.id}">4</span>
         </div>
         <div class="key-weight-row">
           <label class="key-weight-label">Chord tones</label>
-          <input type="range" id="w-chord" min="0" max="10" value="5" class="key-slider">
-          <span class="key-weight-val" id="wv-chord">5</span>
+          <input type="range" id="w-chord-${song.id}" min="0" max="10" value="5" class="key-slider">
+          <span class="key-weight-val" id="wv-chord-${song.id}">5</span>
         </div>
       </div>
       <div class="config-group">
-        <div class="config-label">Include pedals / levers in scoring</div>
-        <div class="voicing-grid" id="key-voicing-grid" style="margin-top:0"></div>
+        <div class="config-label">Pedals / levers in scoring</div>
+        <div class="voicing-grid" id="key-voicing-grid-${song.id}" style="margin-top:0"></div>
       </div>
     </div>
   `;
+}
 
-  // Re-init dynamic elements
-  buildKeyGrids('key-root-grid-manual', 'key-mode-grid-manual');
-  buildKeyGrids('key-root-grid', 'key-mode-grid');
-  initKeyVoicingGrid();
-  initSliders();
-  if (songSections.length) {
-    renderSectionList();
-    if (detectedKey) renderKeyDetection([detectedKey]);
+// ── Per-song state helpers ────────────────────────────
+// Each song uses its own state — we set the shared globals before
+// calling any key/mode function, then save back afterward.
+
+function loadSongState(id) {
+  const song = songs.find(s => s.id === id);
+  if (!song) return;
+  const st = song.state;
+  keyRoot      = st.keyRoot;
+  keyMode      = st.keyMode;
+  songSections = st.songSections;
+  detectedKey  = st.detectedKey;
+  keyOverride  = st.keyOverride;
+  soloChord    = st.soloChord;
+  soloSection  = st.soloSection;
+  mapRendered  = st.mapRendered;
+  nodeDisplay  = st.nodeDisplay;
+  fbdNoteMode  = st.fbdNoteMode;
+  // Restore voicing state
+  keyVoicings  = st.keyVoicings || new Set(VOICING_ORDER);
+  activeSongId = id;
+}
+
+function saveSongState(id) {
+  const song = songs.find(s => s.id === id);
+  if (!song) return;
+  // Also save chart text
+  const ta = document.getElementById('song-paste-' + id);
+  if (ta) song.state.chartText = ta.value;
+  song.state = {
+    ...song.state,
+    keyRoot, keyMode, songSections: JSON.parse(JSON.stringify(songSections)),
+    detectedKey, keyOverride, soloChord, soloSection,
+    mapRendered, nodeDisplay, fbdNoteMode,
+    keyVoicings: new Set(keyVoicings),
+  };
+}
+
+let activeSongId = null;
+
+// ── Init a song panel's dynamic elements ─────────────
+function initSongPanel(id) {
+  const song = songs.find(s => s.id === id);
+  if (!song) return;
+  const st = song.state;
+
+  // Key grids
+  buildKeyGridsSong(id);
+
+  // Voicing grid
+  const g = document.getElementById('key-voicing-grid-' + id);
+  if (g) {
+    g.innerHTML = '';
+    const vs = st.keyVoicings || new Set(VOICING_ORDER);
+    VOICING_ORDER.forEach(v => {
+      const btn = document.createElement('button');
+      btn.className = 'voicing-btn' + (vs.has(v) ? ' active' : '');
+      btn.innerHTML = `<span class="dot" style="background:${COLORS[v]}"></span>${VOICING_LABELS[v]}`;
+      btn.title = 'Tap to toggle · Hold to solo';
+      btn.onclick = () => {
+        loadSongState(id);
+        if (keyVoicings.has(v)) { keyVoicings.delete(v); btn.classList.remove('active'); }
+        else { keyVoicings.add(v); btn.classList.add('active'); }
+        saveSongState(id);
+        liveUpdateSong(id);
+      };
+      let pt = null;
+      const sp = () => { pt = setTimeout(() => {
+        pt = null;
+        loadSongState(id);
+        const solo = keyVoicings.size===1 && keyVoicings.has(v);
+        if (solo) { VOICING_ORDER.forEach(vv=>keyVoicings.add(vv)); g.querySelectorAll('.voicing-btn').forEach(b=>b.classList.add('active')); }
+        else { keyVoicings.clear(); keyVoicings.add(v); g.querySelectorAll('.voicing-btn').forEach(b=>{ const bv=VOICING_ORDER[Array.from(g.children).indexOf(b)]; b.classList.toggle('active',bv===v); }); }
+        saveSongState(id); liveUpdateSong(id);
+      }, 500); };
+      const cp = () => { if(pt){clearTimeout(pt);pt=null;} };
+      btn.addEventListener('touchstart',sp,{passive:true}); btn.addEventListener('touchend',cp); btn.addEventListener('touchmove',cp);
+      btn.addEventListener('mousedown',sp); btn.addEventListener('mouseup',cp); btn.addEventListener('mouseleave',cp);
+      g.appendChild(btn);
+    });
   }
-  if (mapRendered) computeKeyMap();
+
+  // Sliders
+  ['coverage','ease','chord'].forEach(wid => {
+    const sl = document.getElementById(`w-${wid}-${id}`);
+    const vl = document.getElementById(`wv-${wid}-${id}`);
+    if (sl && vl) sl.addEventListener('input', () => { vl.textContent = sl.value; liveUpdateSong(id); });
+  });
+
+  // If song already has sections, render them
+  if (st.songSections.length) {
+    loadSongState(id);
+    renderSectionListSong(id);
+    if (st.detectedKey) renderKeyDetectionSong(id, [st.detectedKey]);
+    if (st.mapRendered) computeKeyMapSong(id);
+  }
 }
 
-function initKeyVoicingGrid() {
-  const g = document.getElementById('key-voicing-grid');
-  if (!g) return;
-  g.innerHTML = '';
-  VOICING_ORDER.forEach(v => {
-    const btn = document.createElement('button');
-    btn.className = 'voicing-btn' + (keyVoicings.has(v) ? ' active' : '');
-    btn.innerHTML = `<span class="dot" style="background:${COLORS[v]}"></span>${VOICING_LABELS[v]}`;
-    btn.title = 'Tap to toggle · Hold to solo';
-    btn.onclick = () => {
-      if (keyVoicings.has(v)) { keyVoicings.delete(v); btn.classList.remove('active'); }
-      else { keyVoicings.add(v); btn.classList.add('active'); }
-      liveUpdate();
-    };
-    let pressTimer = null;
-    const startPress = () => {
-      pressTimer = setTimeout(() => {
-        pressTimer = null;
-        const isSoloed = keyVoicings.size === 1 && keyVoicings.has(v);
-        if (isSoloed) {
-          VOICING_ORDER.forEach(vv => keyVoicings.add(vv));
-          g.querySelectorAll('.voicing-btn').forEach(b => b.classList.add('active'));
-        } else {
-          keyVoicings.clear(); keyVoicings.add(v);
-          g.querySelectorAll('.voicing-btn').forEach(b => {
-            const bv = VOICING_ORDER[Array.from(g.children).indexOf(b)];
-            b.classList.toggle('active', bv === v);
-          });
-        }
-        liveUpdate();
-      }, 500);
-    };
-    const cancelPress = () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } };
-    btn.addEventListener('touchstart', startPress, {passive:true});
-    btn.addEventListener('touchend',   cancelPress);
-    btn.addEventListener('touchmove',  cancelPress);
-    btn.addEventListener('mousedown',  startPress);
-    btn.addEventListener('mouseup',    cancelPress);
-    btn.addEventListener('mouseleave', cancelPress);
-    g.appendChild(btn);
+function buildKeyGridsSong(id) {
+  const song = songs.find(s => s.id === id);
+  if (!song) return;
+  const st = song.state;
+
+  [
+    ['key-root-grid-' + id,        'key-mode-grid-' + id       ],
+    ['key-root-grid-manual-' + id, 'key-mode-grid-manual-' + id],
+  ].forEach(([rootId, modeId]) => {
+    const rg = document.getElementById(rootId);
+    const mg = document.getElementById(modeId);
+    if (!rg || !mg) return;
+    rg.innerHTML = ''; mg.innerHTML = '';
+    chromatic.forEach(n => {
+      const btn = document.createElement('button');
+      btn.className = 'note-mini-btn' + (n === st.keyRoot ? ' active' : '');
+      btn.textContent = n;
+      btn.onclick = () => {
+        loadSongState(id);
+        keyRoot = n;
+        song.state.keyRoot = n;
+        // Sync all root grids for this song
+        ['key-root-grid-'+id,'key-root-grid-manual-'+id].forEach(gid => {
+          const g = document.getElementById(gid);
+          if(g) g.querySelectorAll('.note-mini-btn').forEach(b=>b.classList.toggle('active',b.textContent===n));
+        });
+        liveUpdateSong(id);
+      };
+      rg.appendChild(btn);
+    });
+    MODES.forEach(m => {
+      const btn = document.createElement('button');
+      btn.className = 'key-mode-btn' + (m.name === st.keyMode ? ' active' : '');
+      btn.textContent = m.label;
+      btn.onclick = () => {
+        loadSongState(id);
+        keyMode = m.name;
+        song.state.keyMode = m.name;
+        ['key-mode-grid-'+id,'key-mode-grid-manual-'+id].forEach(gid => {
+          const g = document.getElementById(gid);
+          if(g) g.querySelectorAll('.key-mode-btn').forEach(b=>{ const mm=MODES.find(mm=>mm.label===b.textContent); b.classList.toggle('active',mm&&mm.name===m.name); });
+        });
+        liveUpdateSong(id);
+      };
+      mg.appendChild(btn);
+    });
   });
 }
 
-function initSliders() {
-  ['coverage','ease','chord'].forEach(id => {
-    const sl = document.getElementById('w-' + id);
-    const vl = document.getElementById('wv-' + id);
-    if (sl && vl) sl.addEventListener('input', () => { vl.textContent = sl.value; liveUpdate(); });
+// ── Per-song wrappers for key/mode functions ──────────
+function parseSong(id) {
+  const ta = document.getElementById('song-paste-' + id);
+  if (!ta) return;
+  const text = ta.value;
+  loadSongState(id);
+  songSections = parseSongText(text);
+  if (!songSections.length) { alert('No chords found — check your format.'); return; }
+  const allChords = songSections.flatMap(s => s.chords.map(c => c.name));
+  const candidates = detectKey(allChords);
+  if (candidates.length) { detectedKey = candidates[0]; keyRoot = detectedKey.root; keyMode = detectedKey.mode; }
+  document.getElementById('manual-key-panel-' + id).style.display = 'none';
+  document.getElementById('song-sections-' + id).style.display = '';
+  saveSongState(id);
+  buildKeyGridsSong(id);
+  renderSectionListSong(id);
+  renderKeyDetectionSong(id, candidates.slice(0,3));
+  computeKeyMapSong(id);
+}
+
+function liveUpdateSong(id) {
+  const song = songs.find(s => s.id === id);
+  if (song && song.state.mapRendered) computeKeyMapSong(id);
+}
+
+function setNodeDisplaySong(id, btn) {
+  document.querySelectorAll(`#node-display-toggle-${id} .node-disp-btn`).forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  loadSongState(id);
+  nodeDisplay = btn.dataset.mode;
+  saveSongState(id);
+  liveUpdateSong(id);
+}
+
+function toggleKeyOverride(id) {
+  loadSongState(id);
+  keyOverride = !keyOverride;
+  saveSongState(id);
+  document.getElementById('key-override-panel-' + id).style.display = keyOverride ? '' : 'none';
+  const btn = document.querySelector(`#song-key-row-${id} .song-key-override-btn`);
+  if (btn) btn.textContent = keyOverride ? 'Use Detected' : 'Override';
+  if (!keyOverride && detectedKey) { keyRoot = detectedKey.root; keyMode = detectedKey.mode; saveSongState(id); liveUpdateSong(id); }
+}
+
+function renderSectionListSong(id) {
+  const el = document.getElementById('section-list-' + id);
+  if (!el) return;
+  el.innerHTML = '';
+  const song = songs.find(s => s.id === id);
+  if (!song) return;
+  const ri = noteIdx(song.state.keyRoot);
+  const mode = MODES.find(m => m.name === song.state.keyMode);
+  const scaleSet = mode ? new Set(mode.intervals.map(s => chromatic[(ri+s)%12])) : new Set();
+
+  song.state.songSections.forEach((sec, si) => {
+    const card = document.createElement('div');
+    card.className = 'section-card';
+    card.style.opacity = sec.active ? '1' : '0.45';
+
+    // ON/OFF toggle
+    const tog = document.createElement('button');
+    tog.className = 'section-active-btn' + (sec.active ? '' : ' dim');
+    tog.textContent = sec.active ? 'ON' : 'OFF';
+    tog.style.cssText = 'flex-shrink:0;min-width:48px;min-height:36px;font-size:12px;-webkit-tap-highlight-color:transparent;';
+    tog.onclick = e => {
+      e.stopPropagation();
+      sec.active = !sec.active;
+      tog.textContent = sec.active ? 'ON' : 'OFF';
+      tog.classList.toggle('dim', !sec.active);
+      card.style.opacity = sec.active ? '1' : '0.45';
+      loadSongState(id); soloChord = null; soloSection = null; saveSongState(id);
+      liveUpdateSong(id);
+    };
+    card.appendChild(tog);
+
+    // SOLO
+    const soloBtn = document.createElement('button');
+    soloBtn.className = 'section-solo-btn' + (song.state.soloSection === si ? ' active' : '');
+    soloBtn.textContent = 'SOLO';
+    soloBtn.onclick = e => {
+      e.stopPropagation();
+      loadSongState(id);
+      if (soloSection === si) { soloSection = null; soloBtn.classList.remove('active'); }
+      else { soloSection = si; soloChord = null; document.querySelectorAll(`#section-list-${id} .section-solo-btn`).forEach(b=>b.classList.remove('active')); soloBtn.classList.add('active'); }
+      saveSongState(id); liveUpdateSong(id);
+    };
+    card.appendChild(soloBtn);
+
+    // Label
+    const lw = document.createElement('div');
+    lw.className = 'section-label-wrap';
+    lw.style.cssText = 'flex:0 0 auto;min-width:90px;';
+    const lb = document.createElement('button');
+    lb.className = 'section-label-btn'; lb.textContent = sec.label; lb.title = 'Tap to rename';
+    lb.onclick = () => startRenameSong(id, si, lb, lw);
+    lw.appendChild(lb); card.appendChild(lw);
+
+    // Chord pills
+    const pw = document.createElement('div'); pw.className = 'section-chords';
+    const modeObj = MODES.find(m => m.name === song.state.keyMode);
+    sec.chords.forEach(ch => {
+      const info = modeObj ? chordPillInfo(ch.name, song.state.keyRoot, modeObj.intervals) : {cls:'chord-pill',label:ch.name};
+      let cls = info.cls + (ch.active ? '' : ' chord-inactive');
+      const p = document.createElement('div'); p.className = cls; p.textContent = info.label;
+      p.style.cssText = 'cursor:pointer;user-select:none;-webkit-user-select:none;white-space:nowrap;opacity:' + (ch.active?'1':'0.35') + ';';
+      p.onclick = () => {
+        loadSongState(id);
+        if (soloChord && soloChord.name === ch.name) { soloChord = null; p.classList.remove('chord-solo'); }
+        else if (soloChord) { document.querySelectorAll(`#section-list-${id} .chord-pill.chord-solo`).forEach(el=>el.classList.remove('chord-solo')); const parsed=parseChordName(ch.name); soloChord=parsed?{name:ch.name,root:parsed.root,quality:parsed.quality}:null; if(soloChord)p.classList.add('chord-solo'); }
+        else { const parsed=parseChordName(ch.name); soloChord=parsed?{name:ch.name,root:parsed.root,quality:parsed.quality}:null; if(soloChord)p.classList.add('chord-solo'); }
+        saveSongState(id); liveUpdateSong(id);
+      };
+      pw.appendChild(p);
+    });
+    card.appendChild(pw);
+    el.appendChild(card);
   });
+}
+
+function startRenameSong(id, si, btn, wrap) {
+  const song = songs.find(s => s.id === id);
+  if (!song) return;
+  const inp = document.createElement('input');
+  inp.className = 'section-label-input'; inp.value = song.state.songSections[si].label;
+  wrap.replaceChild(inp, btn); inp.focus(); inp.select();
+  const commit = () => {
+    const val = inp.value.trim() || song.state.songSections[si].label;
+    song.state.songSections[si].label = val;
+    const nb = document.createElement('button');
+    nb.className = 'section-label-btn'; nb.textContent = val; nb.title = 'Tap to rename';
+    nb.onclick = () => startRenameSong(id, si, nb, wrap);
+    wrap.replaceChild(nb, inp);
+  };
+  inp.addEventListener('blur', commit);
+  inp.addEventListener('keydown', e => { if(e.key==='Enter'||e.key==='Escape') commit(); });
+}
+
+function renderKeyDetectionSong(id, candidates) {
+  const row = document.getElementById('song-key-row-' + id);
+  const det = document.getElementById('song-key-detected-' + id);
+  if (!row || !det) return;
+  row.style.display = '';
+  if (!candidates.length) { det.textContent = 'Could not detect key'; return; }
+  const top = candidates[0];
+  const ml = MODES.find(m => m.name === top.mode)?.label || top.mode;
+  const pct = Math.round(top.coverage * 100);
+  const alts = candidates.slice(1).map(c => `${c.root} ${MODES.find(m=>m.name===c.mode)?.label||c.mode}`).join(', ');
+  det.innerHTML = `Detected: <strong>${top.root} ${ml}</strong> &nbsp;(${pct}% coverage)${alts?`<span style="color:var(--text-dim);font-size:10px"> · Alt: ${alts}</span>`:''}`;
+}
+
+function computeKeyMapSong(id) {
+  loadSongState(id);
+  // Read weights from this song's sliders
+  const wCov   = parseInt(document.getElementById('w-coverage-' + id)?.value || 6);
+  const wEase  = parseInt(document.getElementById('w-ease-' + id)?.value || 4);
+  const wChord = parseInt(document.getElementById('w-chord-' + id)?.value || 5);
+  mapRendered = true;
+  saveSongState(id);
+  // Call shared computeKeyMap with song-specific result div and sliders
+  _computeKeyMapCore(id, wCov, wEase, wChord);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2215,47 +2511,122 @@ function renderSetOrder() {
     item.innerHTML = `
       <div class="setorder-num">${i+1}</div>
       <input class="setorder-name" value="${song.name}" placeholder="Song name"
-        onchange="renameSong(${i}, this.value)" />
+        onchange="renameSong(${song.id}, this.value)" />
       <div class="setorder-arrows">
-        <button class="setorder-arrow" onclick="moveSong(${i},-1)" ${i===0?'disabled':''}>▲</button>
-        <button class="setorder-arrow" onclick="moveSong(${i},1)"  ${i===songs.length-1?'disabled':''}>▼</button>
+        <button class="setorder-arrow" onclick="moveSong(${song.id},-1)" ${i===0?'disabled':''}>▲</button>
+        <button class="setorder-arrow" onclick="moveSong(${song.id},1)"  ${i===songs.length-1?'disabled':''}>▼</button>
       </div>
-      <button class="setorder-del" onclick="deleteSong(${i})">✕</button>
+      <button class="setorder-del" onclick="deleteSong(${song.id})">✕</button>
       <button class="song-nav-btn" style="font-size:10px;padding:5px 10px"
-        onclick="saveSongState(currentSongIdx);loadSong(${i});switchTab('songs')">Open</button>
+        onclick="switchTab('song-${song.id}')">Open</button>
     `;
     list.appendChild(item);
   });
 }
 
-function moveSong(idx, dir) {
-  saveSongState(currentSongIdx);
-  const newIdx = idx + dir;
-  if (newIdx < 0 || newIdx >= songs.length) return;
-  [songs[idx], songs[newIdx]] = [songs[newIdx], songs[idx]];
-  if (currentSongIdx === idx) currentSongIdx = newIdx;
-  else if (currentSongIdx === newIdx) currentSongIdx = idx;
-  renderSetOrder();
-  // Update nav title
-  const navTitle = document.getElementById('song-nav-title');
-  if (navTitle && songs[currentSongIdx])
-    navTitle.textContent = `${currentSongIdx+1}. ${songs[currentSongIdx].name}`;
+// ═══════════════════════════════════════════════════════
+//  TAB SWITCHING
+// ═══════════════════════════════════════════════════════
+function switchTab(name) {
+  // Save current song state if leaving a song tab
+  if (activeSongId !== null && name !== 'song-' + activeSongId) {
+    saveSongState(activeSongId);
+  }
+
+  document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+
+  const tab   = document.getElementById('tab-' + name);
+  const panel = document.getElementById('panel-' + name);
+  if (tab)   tab.classList.add('active');
+  if (panel) panel.classList.add('active');
+
+  // Scroll tab into view on mobile
+  if (tab) tab.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
+
+  // Panel-specific init
+  if (name === 'settings') {
+    renderSetOrder();
+    renderCopedentTable();
+    activeSongId = null;
+  } else if (name.startsWith('song-')) {
+    const id = parseInt(name.replace('song-',''));
+    activeSongId = id;
+    loadSongState(id);
+    // Re-render sections if needed
+    const song = songs.find(s => s.id === id);
+    if (song && song.state.songSections.length) {
+      renderSectionListSong(id);
+      // Rebuild interactive section cards near map
+      buildSongResultSections(id);
+    }
+  }
 }
 
-function renameSong(idx, name) {
-  songs[idx].name = name;
-  const navTitle = document.getElementById('song-nav-title');
-  if (navTitle && idx === currentSongIdx)
-    navTitle.textContent = `${currentSongIdx+1}. ${name}`;
+function updateSetName(val) {
+  setName = val;
+  const el = document.getElementById('header-title');
+  if (el) el.textContent = val || 'Steel Note Finder';
 }
 
-function deleteSong(idx) {
-  if (!confirm(`Delete "${songs[idx].name}"?`)) return;
-  songs.splice(idx, 1);
-  if (currentSongIdx >= songs.length) currentSongIdx = Math.max(0, songs.length-1);
-  renderSetOrder();
-  if (songs.length) loadSong(currentSongIdx);
-  else renderSongChartArea();
+
+// ── Build interactive section cards in result area ────
+function buildSongResultSections(id) {
+  const song = songs.find(s => s.id === id);
+  if (!song || !song.state.songSections.length) return;
+  const container = document.getElementById('key-section-cards-' + id);
+  if (!container) return;
+  container.innerHTML = '';
+  const mode = MODES.find(m => m.name === song.state.keyMode) || MODES[0];
+  const header = document.createElement('div');
+  header.className = 'key-heat-label'; header.style.marginTop = '1.25rem';
+  header.textContent = 'Song sections'; container.appendChild(header);
+  song.state.songSections.forEach((sec, si) => {
+    const card = document.createElement('div');
+    card.className = 'section-card';
+    card.style.cssText = 'margin-bottom:5px;opacity:' + (sec.active?'1':'0.45') + ';';
+    const tog = document.createElement('button');
+    tog.className = 'section-active-btn' + (sec.active?'':' dim');
+    tog.textContent = sec.active ? 'ON' : 'OFF';
+    tog.style.cssText = 'flex-shrink:0;min-width:48px;min-height:36px;font-size:12px;-webkit-tap-highlight-color:transparent;';
+    tog.onclick = e => {
+      e.stopPropagation(); sec.active = !sec.active;
+      tog.textContent = sec.active?'ON':'OFF'; tog.classList.toggle('dim',!sec.active);
+      card.style.opacity = sec.active?'1':'0.45';
+      loadSongState(id); soloChord=null; soloSection=null; saveSongState(id); liveUpdateSong(id);
+    };
+    card.appendChild(tog);
+    const soloBtn = document.createElement('button');
+    soloBtn.className = 'section-solo-btn' + (song.state.soloSection===si?' active':'');
+    soloBtn.textContent = 'SOLO';
+    soloBtn.onclick = e => {
+      e.stopPropagation(); loadSongState(id);
+      if (soloSection===si) { soloSection=null; soloBtn.classList.remove('active'); }
+      else { soloSection=si; soloChord=null; container.querySelectorAll('.section-solo-btn').forEach(b=>b.classList.remove('active')); soloBtn.classList.add('active'); }
+      saveSongState(id); liveUpdateSong(id);
+    };
+    card.appendChild(soloBtn);
+    const lbl = document.createElement('span');
+    lbl.className = 'section-label-btn'; lbl.style.cssText = 'cursor:default;flex:0 0 auto;min-width:80px;';
+    lbl.textContent = sec.label; card.appendChild(lbl);
+    const pw = document.createElement('div'); pw.className = 'section-chords';
+    sec.chords.forEach(ch => {
+      const info = chordPillInfo(ch.name, song.state.keyRoot, mode.intervals);
+      const p = document.createElement('div');
+      p.className = info.cls + (ch.active?'':' chord-inactive');
+      p.textContent = info.label;
+      p.style.cssText = 'cursor:pointer;user-select:none;-webkit-user-select:none;white-space:nowrap;opacity:'+(ch.active?'1':'0.35')+';';
+      p.onclick = () => {
+        loadSongState(id);
+        if (soloChord&&soloChord.name===ch.name) { soloChord=null; p.classList.remove('chord-solo'); }
+        else { container.querySelectorAll('.chord-pill.chord-solo').forEach(el=>el.classList.remove('chord-solo')); const parsed=parseChordName(ch.name); soloChord=parsed?{name:ch.name,root:parsed.root,quality:parsed.quality}:null; if(soloChord)p.classList.add('chord-solo'); }
+        saveSongState(id); liveUpdateSong(id);
+      };
+      pw.appendChild(p);
+    });
+    card.appendChild(pw);
+    container.appendChild(card);
+  });
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2264,116 +2635,51 @@ function deleteSong(idx) {
 function renderCopedentTable() {
   const wrap = document.getElementById('copedent-table-wrap');
   if (!wrap) return;
-
-  // Collect all pedal/lever names in order
-  const allVoicings = VOICING_ORDER.filter(v => v !== 'open' && v !== 'A+B');
-
-  // Split into left knee levers, pedals, right knee levers for column grouping
   const leftLevers  = ['LKL','LKR','LKV'];
   const pedals      = ['A','B','C'];
   const rightLevers = ['RKL','RKR'];
-
-  // Build column headers matching the physical chart layout
-  const cols = [...leftLevers, 'sep1', ...pedals, 'sep2', ...rightLevers];
-
   let html = `<table class="copedent-table">
-    <thead>
-      <tr>
-        <th colspan="2">Tuning</th>
-        ${leftLevers.map(v=>`<th style="color:${COLORS[v]||'var(--text-dim)'}">${v}</th>`).join('')}
-        <th style="border:none;background:var(--bg);width:8px"></th>
-        ${pedals.map(v=>`<th style="color:${COLORS[v]||'var(--text-dim)'}">${v}</th>`).join('')}
-        <th style="border:none;background:var(--bg);width:8px"></th>
-        ${rightLevers.map(v=>`<th style="color:${COLORS[v]||'var(--text-dim)'}">${v}</th>`).join('')}
-      </tr>
-    </thead>
-    <tbody>`;
-
+    <thead><tr>
+      <th colspan="2">Tuning</th>
+      ${leftLevers.map(v=>`<th style="color:${COLORS[v]||'var(--text-dim)'}">${v}</th>`).join('')}
+      <th style="border:none;background:var(--bg);width:8px"></th>
+      ${pedals.map(v=>`<th style="color:${COLORS[v]||'var(--text-dim)'}">${v}</th>`).join('')}
+      <th style="border:none;background:var(--bg);width:8px"></th>
+      ${rightLevers.map(v=>`<th style="color:${COLORS[v]||'var(--text-dim)'}">${v}</th>`).join('')}
+    </tr></thead><tbody>`;
   for (let s=1; s<=10; s++) {
     const open = openStrings[s];
-    html += `<tr>
-      <td class="string-num">S${s}</td>
-      <td class="open-note">${open}</td>`;
-
-    // Left levers
+    html += `<tr><td class="string-num">S${s}</td><td class="open-note">${open}</td>`;
     for (const v of leftLevers) {
       const ch = stringChanges[s].find(c=>c.v===v);
-      if (ch) {
-        const resultNote = shiftNote(open, ch.s);
-        const semLabel = ch.s > 0 ? `+${ch.s}` : `${ch.s}`;
-        html += `<td class="has-change" title="${semLabel} semitones">${resultNote}</td>`;
-      } else {
-        html += `<td class="empty">·</td>`;
-      }
+      html += ch ? `<td class="has-change" title="${ch.s>0?'+':''}${ch.s} semitones">${shiftNote(open,ch.s)}</td>`
+                 : `<td class="empty">·</td>`;
     }
-
-    // Sep
     html += `<td style="border:none;background:var(--bg)"></td>`;
-
-    // Pedals
     for (const v of pedals) {
       const ch = stringChanges[s].find(c=>c.v===v);
-      if (ch) {
-        const resultNote = shiftNote(open, ch.s);
-        html += `<td class="has-change">${resultNote}</td>`;
-      } else {
-        html += `<td class="empty">·</td>`;
-      }
+      html += ch ? `<td class="has-change">${shiftNote(open,ch.s)}</td>`
+                 : `<td class="empty">·</td>`;
     }
-
-    // Sep
     html += `<td style="border:none;background:var(--bg)"></td>`;
-
-    // Right levers
     for (const v of rightLevers) {
       const ch = stringChanges[s].find(c=>c.v===v);
-      if (ch) {
-        const resultNote = shiftNote(open, ch.s);
-        html += `<td class="has-change">${resultNote}</td>`;
-      } else {
-        html += `<td class="empty">·</td>`;
-      }
+      html += ch ? `<td class="has-change">${shiftNote(open,ch.s)}</td>`
+                 : `<td class="empty">·</td>`;
     }
-
     html += `</tr>`;
   }
-
   html += `</tbody></table>
     <div style="margin-top:0.75rem;font-size:10px;color:var(--text-dim);letter-spacing:0.08em">
-      Showing result notes at open position · colors match voicing buttons
+      Result notes at open position · colors match voicing buttons
     </div>`;
-
   wrap.innerHTML = html;
 }
 
-// ═══════════════════════════════════════════════════════
-//  TAB SWITCHING
-// ═══════════════════════════════════════════════════════
-function switchTab(name) {
-  // Save song state when leaving songs tab
-  if (name !== 'songs') saveSongState(currentSongIdx);
-
-  const names = ['setorder','songs','copedent','finder'];
-  document.querySelectorAll('.mode-tab').forEach((t, i) => {
-    t.classList.toggle('active', names[i] === name);
-  });
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  const panel = document.getElementById('panel-' + name);
-  if (panel) panel.classList.add('active');
-
-  // Panel-specific init
-  if (name === 'songs') {
-    renderSongChartArea();
-  } else if (name === 'setorder') {
-    renderSetOrder();
-  } else if (name === 'copedent') {
-    renderCopedentTable();
-  }
-}
-
 // ── Startup ───────────────────────────────────────────
-// Render the initial songs panel (default tab)
-renderSongChartArea();
+renderSetOrder();
+renderCopedentTable();
+switchTab('settings');
 </script>
 </body>
 </html>
