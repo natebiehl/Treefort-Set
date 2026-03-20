@@ -550,6 +550,13 @@
     font-size: 13px; font-weight: 700;
     letter-spacing: 0.02em; text-align: center;
   }
+  .fret-voice-connector {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: flex-end;
+    flex: 0 0 auto;
+    padding-bottom: 4px;
+  }
+
   .fret-mini-coverage {
     font-size: 9px; letter-spacing: 0.08em;
     text-transform: uppercase; margin-bottom: 2px;
@@ -676,7 +683,7 @@
 
 <header>
   <div class="header-title" id="header-title">Steel Note Finder</div>
-  <div class="header-sub">Williams 400 · E9 · Frets 0–12 · v2026-03-19 18:43 MT</div>
+  <div class="header-sub">Williams 400 · E9 · Frets 0–12 · v2026-03-19 20:31 MT</div>
 </header>
 
 <div class="main">
@@ -702,6 +709,34 @@
     <div class="selector-label">Songs — tap + to add, arrows to reorder</div>
     <div id="setorder-list" style="margin-top:0.75rem"></div>
     <button class="walk-btn" style="margin-top:1rem" onclick="addSong()">+ Add Song</button>
+
+    <div class="selector-label" style="margin-top:2rem">Export / Import set</div>
+    <div style="margin-top:0.75rem;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="walk-btn" onclick="exportSet()">⬆ Export Set Code</button>
+      <button class="walk-btn" onclick="showImport()">⬇ Import Set Code</button>
+    </div>
+    <div id="export-area" style="display:none;margin-top:0.75rem">
+      <div style="font-size:10px;letter-spacing:0.1em;color:var(--text-dim);margin-bottom:6px">COPY THIS CODE — paste it on another device to load this set</div>
+      <textarea id="export-code" readonly
+        style="width:100%;height:80px;background:var(--bg3);border:1px solid var(--border2);
+               color:var(--teal);font-family:'IBM Plex Mono',monospace;font-size:11px;
+               padding:8px;border-radius:3px;resize:none;outline:none;"
+        onclick="this.select()"></textarea>
+      <button class="walk-btn" style="margin-top:6px" onclick="copyExportCode()">Copy to Clipboard</button>
+    </div>
+    <div id="import-area" style="display:none;margin-top:0.75rem">
+      <div style="font-size:10px;letter-spacing:0.1em;color:var(--text-dim);margin-bottom:6px">PASTE SET CODE below then tap Load</div>
+      <textarea id="import-code"
+        style="width:100%;height:80px;background:var(--bg3);border:1px solid var(--border2);
+               color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;
+               padding:8px;border-radius:3px;resize:none;outline:none;"
+        placeholder="Paste set code here..."></textarea>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <button class="walk-btn" onclick="importSet()">Load Set</button>
+        <button class="walk-btn" style="color:var(--text-dim)" onclick="document.getElementById('import-area').style.display='none'">Cancel</button>
+      </div>
+      <div id="import-error" style="color:#e06060;font-size:11px;margin-top:6px;display:none"></div>
+    </div>
 
     <div class="selector-label" style="margin-top:2rem">Copedent — tuning &amp; pedal/lever changes</div>
     <div id="copedent-table-wrap" style="overflow-x:auto;margin-top:0.75rem"></div>
@@ -777,11 +812,11 @@ const stringChanges = {
   1:[{s:2,v:'RKL'}],
   2:[{s:1,v:'RKL'},{s:-2,v:'RKR'}],
   3:[{s:1,v:'B'}],
-  4:[{s:2,v:'C'},{s:-1,v:'LKL'},{s:1,v:'LKR'}],
+  4:[{s:2,v:'C'},{s:1,v:'LKL'},{s:-1,v:'LKR'}],
   5:[{s:2,v:'A'},{s:2,v:'C'},{s:-1,v:'LKV'}],
   6:[{s:1,v:'B'},{s:-2,v:'RKL'}],
   7:[],
-  8:[{s:-1,v:'LKL'},{s:1,v:'LKR'}],
+  8:[{s:1,v:'LKL'},{s:-1,v:'LKR'}],
   9:[{s:-1,v:'RKR'}],
   10:[{s:2,v:'A'},{s:-1,v:'LKV'}],
 };
@@ -810,11 +845,86 @@ function buildNeckMap() {
 const NECK_MAP = buildNeckMap();
 
 // Voicing complexity cost (prefer open, then single pedals, then knee levers)
-const VOICING_COST  = { open:0, A:1, B:1, 'A+B':1, C:1, LKL:2, LKR:2, RKL:2, RKR:2, LKV:2 };
-const VOICING_ORDER = ['open','A','B','A+B','C','LKL','LKR','RKL','RKR','LKV'];
-const COLORS        = { open:'#888878', A:'#c8a84a', B:'#4a9ee0', 'A+B':'#88c840', C:'#b858c8',
-                        LKL:'#48c870', LKR:'#88d030', RKL:'#d84848', RKR:'#d87038', LKV:'#38c0c0' };
+const VOICING_COST  = { open:0, A:1, B:1, 'A+B':1, 'B+C':2, C:1, LKL:2, LKR:2, RKL:2, RKR:2, LKV:2,
+                        'A+LKL':3,'A+LKR':3,'A+RKL':3,'A+RKR':3,'A+LKV':3,
+                        'B+LKL':3,'B+LKR':3,'B+RKL':3,'B+RKR':3,'B+LKV':3,
+                        'C+LKL':3,'C+LKR':3,'C+RKL':3,'C+RKR':3,'C+LKV':3,
+                        'A+B+LKL':4,'A+B+LKR':4,'A+B+RKL':4,'A+B+RKR':4,'A+B+LKV':4,
+                        'B+C+LKL':4,'B+C+LKR':4,'B+C+RKL':4,'B+C+RKR':4,'B+C+LKV':4,
+                        'LKL+RKL':4,'LKL+RKR':4,'LKR+RKL':4,'LKR+RKR':4,'LKV+RKL':4,'LKV+RKR':4 };
+
+const VOICING_ORDER = ['open','A','B','A+B','B+C','C','LKL','LKR','RKL','RKR','LKV'];
+
+const COLORS        = { open:'#888878', A:'#c8a84a', B:'#4a9ee0', 'A+B':'#88c840', 'B+C':'#50d8b0',
+                        C:'#b858c8', LKL:'#48c870', LKR:'#88d030', RKL:'#d84848', RKR:'#d87038', LKV:'#38c0c0' };
 const STEP_COLORS   = ['#c8a84a','#4a9ee0','#48c870','#d84848','#b858c8','#38c0c0','#d87038','#e8e0a0'];
+
+// All valid voicing combinations for fret breakdown scoring
+// Each entry: { name, parts } where parts are the individual voicings to combine
+const VALID_COMBOS = [
+  // Singles
+  {name:'open',       parts:['open']},
+  {name:'A',          parts:['A']},
+  {name:'B',          parts:['B']},
+  {name:'C',          parts:['C']},
+  {name:'A+B',        parts:['A','B']},
+  {name:'B+C',        parts:['B','C']},
+  {name:'LKL',        parts:['LKL']},
+  {name:'LKR',        parts:['LKR']},
+  {name:'LKV',        parts:['LKV']},
+  {name:'RKL',        parts:['RKL']},
+  {name:'RKR',        parts:['RKR']},
+  // Pedal + left knee
+  {name:'A+LKL',      parts:['A','LKL']},
+  {name:'A+LKR',      parts:['A','LKR']},
+  {name:'A+LKV',      parts:['A','LKV']},
+  {name:'B+LKL',      parts:['B','LKL']},
+  {name:'B+LKR',      parts:['B','LKR']},
+  {name:'B+LKV',      parts:['B','LKV']},
+  {name:'C+LKL',      parts:['C','LKL']},
+  {name:'C+LKR',      parts:['C','LKR']},
+  {name:'C+LKV',      parts:['C','LKV']},
+  {name:'A+B+LKL',    parts:['A','B','LKL']},
+  {name:'A+B+LKR',    parts:['A','B','LKR']},
+  {name:'A+B+LKV',    parts:['A','B','LKV']},
+  {name:'B+C+LKL',    parts:['B','C','LKL']},
+  {name:'B+C+LKR',    parts:['B','C','LKR']},
+  {name:'B+C+LKV',    parts:['B','C','LKV']},
+  // Pedal + right knee
+  {name:'A+RKL',      parts:['A','RKL']},
+  {name:'A+RKR',      parts:['A','RKR']},
+  {name:'B+RKL',      parts:['B','RKL']},
+  {name:'B+RKR',      parts:['B','RKR']},
+  {name:'C+RKL',      parts:['C','RKL']},
+  {name:'C+RKR',      parts:['C','RKR']},
+  {name:'A+B+RKL',    parts:['A','B','RKL']},
+  {name:'A+B+RKR',    parts:['A','B','RKR']},
+  {name:'B+C+RKL',    parts:['B','C','RKL']},
+  {name:'B+C+RKR',    parts:['B','C','RKR']},
+  // Left + right knee (no pedal)
+  {name:'LKL+RKL',    parts:['LKL','RKL']},
+  {name:'LKL+RKR',    parts:['LKL','RKR']},
+  {name:'LKR+RKL',    parts:['LKR','RKL']},
+  {name:'LKR+RKR',    parts:['LKR','RKR']},
+  {name:'LKV+RKL',    parts:['LKV','RKL']},
+  {name:'LKV+RKR',    parts:['LKV','RKR']},
+];
+
+// Compute the note each combo produces on each string at a given fret
+function comboNotesAtFret(parts, fret) {
+  const result = {}; // string -> note
+  for (let s=1; s<=10; s++) {
+    const base = shiftNote(openStrings[s], fret);
+    let totalShift = 0;
+    for (const v of parts) {
+      if (v === 'open') continue;
+      const ch = stringChanges[s].find(c => c.v === v);
+      if (ch) totalShift += ch.s;
+    }
+    result[s] = shiftNote(base, totalShift);
+  }
+  return result;
+}
 
 // ═══════════════════════════════════════════════════════
 //  NECK DRAWING
@@ -918,19 +1028,22 @@ function render() {
 
   const noteList = [...activeNotes].join('  ·  ');
   const total = matchList.length;
-  document.getElementById('summary').innerHTML = activeNotes.size
+  const summaryEl = document.getElementById('summary');
+  if (summaryEl) summaryEl.innerHTML = activeNotes.size
     ? `<span class="note-name">${noteList}</span> &nbsp;·&nbsp; <span class="count">${total} position${total!==1?'s':''}</span>`
     : `<span style="color:var(--text-dim)">select a note to begin</span>`;
 
   const hasMatches = usedVoicings.size > 0;
-  document.getElementById('legend-label').style.display = hasMatches ? '' : 'none';
-  document.getElementById('legend').innerHTML = VOICING_ORDER.filter(v=>usedVoicings.has(v)).map(v =>
+  const legendLabel = document.getElementById('legend-label');
+  const legendEl = document.getElementById('legend');
+  if (legendLabel) legendLabel.style.display = hasMatches ? '' : 'none';
+  if (legendEl) legendEl.innerHTML = VOICING_ORDER.filter(v=>usedVoicings.has(v)).map(v =>
     `<div class="legend-item"><div class="legend-swatch" style="background:${COLORS[v]}"></div>${v==='open'?'Open':v}</div>`
   ).join('');
 }
 
 // Build voicing toggle buttons
-const VOICING_LABELS = { open:'Open', A:'A', B:'B', 'A+B':'A+B', C:'C', LKL:'LKL', LKR:'LKR', RKL:'RKL', RKR:'RKR', LKV:'LKV' };
+const VOICING_LABELS = { open:'Open', A:'A', B:'B', 'A+B':'A+B', 'B+C':'B+C', C:'C', LKL:'LKL', LKR:'LKR', RKL:'RKL', RKR:'RKR', LKV:'LKV' };
 
 // Note finder DOM init — guarded since note finder panel is not in this build
 const noteGrid = document.getElementById('note-grid');
@@ -1041,6 +1154,19 @@ const DEGREE_NAMES = {
   0:'1', 1:'b2', 2:'2', 3:'b3', 4:'3', 5:'4',
   6:'b5', 7:'5', 8:'b6', 9:'6', 10:'b7', 11:'7'
 };
+
+// Return diatonic degree name for a semitone distance, relative to mode intervals
+// e.g. in Mixolydian, semDist=10 → "b7" becomes "7" since 10 is a diatonic degree
+function diatonicDegreeName(semDist, modeIntervals) {
+  // Find which scale degree index this semitone corresponds to
+  const degIdx = modeIntervals.indexOf(semDist);
+  if (degIdx !== -1) {
+    // It's a diatonic note — name by scale degree number
+    return String(degIdx + 1);
+  }
+  // Non-diatonic — use chromatic flat names
+  return DEGREE_NAMES[semDist] || '?';
+}
 
 const CHORD_QUALITY_INTERVALS = {
   maj:[0,4,7], min:[0,3,7], dom7:[0,4,7,10], min7:[0,3,7,10],
@@ -1380,7 +1506,7 @@ function setNodeDisplay(btn) {
 
 // ── Live update — redraws map if already rendered ─────
 function liveUpdate() {
-  if (mapRendered) computeKeyMap();
+  if (activeSongId !== null) liveUpdateSong(activeSongId);
 }
 
 // ── Parse button ──────────────────────────────────────
@@ -1539,7 +1665,8 @@ function sectionChordToneBonus(fret, scaleNotes, wChord) {
 // ── Node label helper ─────────────────────────────────
 function nodeLabel(note, voicing, scaleArr) {
   const semDist = (noteIdx(note) - noteIdx(scaleArr[0]) + 12) % 12;
-  const degree  = DEGREE_NAMES[semDist] || '?';
+  const modeObj = MODES.find(m=>m.name===keyMode)||MODES[0];
+  const degree  = diatonicDegreeName(semDist, modeObj.intervals);
   const vLabel  = voicing==='open' ? '·' : voicing;
   if (nodeDisplay==='note')           return { top: note,   bot: null,   horiz: false };
   if (nodeDisplay==='voicing')        return { top: vLabel, bot: null,   horiz: false };
@@ -1561,72 +1688,136 @@ const CHORD_COLORS = [
 function buildMiniNeckSVG(ch, fret, col, noteMode) {
   const chordTones = new Set(chordToneNotes(ch.parsed.root, ch.parsed.quality));
   const ri = noteIdx(keyRoot);
-  const mode = MODES.find(m=>m.name===keyMode)||MODES[0];
 
-  // Find best note per string
+  // Score every valid combo — pick the one that produces the most chord tones
+  let bestCombo = VALID_COMBOS[0];
+  let bestScore = -1;
+
+  for (const combo of VALID_COMBOS) {
+    const notes = comboNotesAtFret(combo.parts, fret);
+    let hits = 0, rootHits = 0;
+    for (let s=1; s<=10; s++) {
+      if (chordTones.has(notes[s])) {
+        hits++;
+        if (notes[s] === ch.parsed.root) rootHits++;
+      }
+    }
+    const score = hits * 2 + rootHits - (VOICING_COST[combo.name] || 0) * 0.5;
+    if (score > bestScore) { bestScore = score; bestCombo = combo; }
+  }
+
+  // Get the notes for the winning combo
+  const comboNotes = comboNotesAtFret(bestCombo.parts, fret);
+
+  // Build hits — only strings producing chord tones
   const hits = [];
   for (let s=1; s<=10; s++) {
-    const opts = stringNotesAt(s, fret).filter(o =>
-      keyVoicings.has(o.voicing) && chordTones.has(o.note)
-    );
-    if (!opts.length) continue;
-    const best = opts.sort((a,b)=>{
-      const aS=(a.note===ch.parsed.root?2:0)+(chordTones.has(a.note)?1:0);
-      const bS=(b.note===ch.parsed.root?2:0)+(chordTones.has(b.note)?1:0);
-      return bS-aS;
-    })[0];
-    const semDist = (noteIdx(best.note)-ri+12)%12;
-    const degree = DEGREE_NAMES[semDist]||'?';
-    hits.push({string:s, note:best.note, voicing:best.voicing,
-               isRoot:best.note===ch.parsed.root, degree});
+    const note = comboNotes[s];
+    if (!chordTones.has(note)) continue;
+    const semDist = (noteIdx(note) - ri + 12) % 12;
+    const modeObj = MODES.find(m=>m.name===keyMode)||MODES[0];
+    hits.push({
+      string: s, note, isRoot: note === ch.parsed.root,
+      degree: diatonicDegreeName(semDist, modeObj.intervals)
+    });
   }
 
-  // Bigger dimensions for readability
-  const mW=72, mH=240;
-  const mT=20, mB=mH-10;
-  const mNeckH=mB-mT;
-  const sx=mW/2;
-
-  let svg=`<svg width="${mW}" height="${mH}" viewBox="0 0 ${mW} ${mH}" xmlns="http://www.w3.org/2000/svg">`;
-  svg+=`<rect x="4" y="${mT}" width="${mW-8}" height="${mNeckH}" fill="#131410" rx="2"/>`;
-
-  for (let s=1;s<=10;s++) {
-    const y=mT+((s-1)/9)*mNeckH;
-    const sw=(0.5+(s-1)*0.1).toFixed(2);
-    svg+=`<line x1="4" y1="${y}" x2="${mW-4}" y2="${y}" stroke="#284a30" stroke-width="${sw}"/>`;
-    // String number label on left
-    svg+=`<text x="2" y="${y+0.5}" text-anchor="end" dominant-baseline="middle"
-      font-size="7" font-family="'IBM Plex Mono',monospace" fill="#404038">S${s}</text>`;
+  // SVG — wider to accommodate voicing labels
+  const mW=96, mH=240, mT=20, mB=230, mNeckH=mB-mT, sx=28;
+  let svg = `<svg width="${mW}" height="${mH}" viewBox="0 0 ${mW} ${mH}" xmlns="http://www.w3.org/2000/svg">`;
+  svg += `<rect x="4" y="${mT}" width="${sx*2}" height="${mNeckH}" fill="#131410" rx="2"/>`;
+  for (let s=1; s<=10; s++) {
+    const y = mT+((s-1)/9)*mNeckH;
+    svg += `<line x1="4" y1="${y}" x2="${sx*2+4}" y2="${y}" stroke="#284a30" stroke-width="${(0.5+(s-1)*0.1).toFixed(2)}"/>`;
+    svg += `<text x="2" y="${y+0.5}" text-anchor="end" dominant-baseline="middle" font-size="7" font-family="'IBM Plex Mono',monospace" fill="#404038">S${s}</text>`;
   }
-
-  svg+=`<line x1="${sx}" y1="${mT}" x2="${sx}" y2="${mB}" stroke="#808060" stroke-width="2.5"/>`;
+  svg += `<line x1="${sx}" y1="${mT}" x2="${sx}" y2="${mB}" stroke="#808060" stroke-width="2.5"/>`;
 
   for (const h of hits) {
-    const y=mT+((h.string-1)/9)*mNeckH;
-    const dotCol=h.isRoot?'#e06060':col;
-    const r=h.isRoot?10:9;
-    svg+=`<circle cx="${sx}" cy="${y}" r="${r}" fill="${dotCol}" opacity="0.93"/>`;
+    const y = mT+((h.string-1)/9)*mNeckH;
+    const dotCol = h.isRoot ? '#e06060' : col;
+    const r = 13;
+    svg += `<circle cx="${sx}" cy="${y}" r="${r}" fill="${dotCol}" opacity="0.93"/>`;
+    // Show note above, degree below inside the dot
+    const noteFs = h.note.length>1?7:9;
+    const degFs  = h.degree.length>1?6:7;
+    svg += `<text x="${sx}" y="${y-2}" text-anchor="middle" dominant-baseline="middle" font-size="${noteFs}" font-family="'Syne',sans-serif" font-weight="600" fill="#0a0b08">${h.note}</text>`;
+    svg += `<text x="${sx}" y="${y+5}" text-anchor="middle" dominant-baseline="middle" font-size="${degFs}" font-family="'IBM Plex Mono',monospace" font-weight="400" fill="#0a0b0888">${h.degree}</text>`;
+    // Per-string voicing label to the right
+    const stringVoicing = bestCombo.parts.filter(v => v !== 'open' && stringChanges[h.string].find(c => c.v === v)).join('+') || 'open';
+    const vLabel = stringVoicing === 'open' ? '·' : stringVoicing;
+    svg += `<text x="${sx+r+3}" y="${y+0.5}" dominant-baseline="middle" font-size="8" font-family="'IBM Plex Mono',monospace" font-weight="600" fill="${dotCol}" opacity="0.9">${vLabel}</text>`;
+  }
+  svg += `</svg>`;
 
-    // Dot label — note or degree
-    const dotLabel = noteMode==='degree' ? h.degree : h.note;
-    const dotFs = dotLabel.length>2?7:dotLabel.length>1?8.5:10;
-    svg+=`<text x="${sx}" y="${y+0.5}" text-anchor="middle" dominant-baseline="middle"
-      font-size="${dotFs}" font-family="'Syne',sans-serif" font-weight="800" fill="#0a0b08">${dotLabel}</text>`;
+  const recipe = bestCombo.name === 'open' ? 'Open' : bestCombo.name;
+  return { svg, hits, recipe, bestCombo, comboNotes };
+}
 
-    // Voicing label — always shown, to the right, bigger
-    const vLabel = h.voicing==='open'?'·':h.voicing;
-    svg+=`<text x="${sx+r+3}" y="${y+0.5}" dominant-baseline="middle"
-      font-size="8" font-family="'IBM Plex Mono',monospace" font-weight="600"
-      fill="${dotCol}" opacity="0.9">${vLabel}</text>`;
+function buildVoiceConnector(dA, dB, fret) {
+  // For each string, check if it's a chord tone in either chord and if the voicing changes
+  const chordTonesA = new Set(chordToneNotes(dA.ch.parsed.root, dA.ch.parsed.quality));
+  const chordTonesB = new Set(chordToneNotes(dB.ch.parsed.root, dB.ch.parsed.quality));
+
+  const mH=240, mT=20, mB=230, mNeckH=mB-mT;
+  const mW=40; // narrow connector column
+
+  // SVG vertical connector
+  let svg = `<svg width="${mW}" height="${mH}" viewBox="0 0 ${mW} ${mH}" xmlns="http://www.w3.org/2000/svg">`;
+
+  // Center line
+  svg += `<line x1="${mW/2}" y1="${mT}" x2="${mW/2}" y2="${mB}" stroke="#252620" stroke-width="1" stroke-dasharray="3,4"/>`;
+
+  for (let s=1; s<=10; s++) {
+    const noteA = dA.comboNotes[s];
+    const noteB = dB.comboNotes[s];
+    const isChordToneA = chordTonesA.has(noteA);
+    const isChordToneB = chordTonesB.has(noteB);
+
+    // Only show strings that are chord tones in at least one chord AND the voicing changes
+    if (!isChordToneA && !isChordToneB) continue;
+
+    // Find which voicing parts affect this string in each combo
+    const voicingA = dA.bestCombo.parts.filter(v => v!=='open' && stringChanges[s].find(c=>c.v===v)).join('+') || 'open';
+    const voicingB = dB.bestCombo.parts.filter(v => v!=='open' && stringChanges[s].find(c=>c.v===v)).join('+') || 'open';
+
+    if (voicingA === voicingB) continue; // no change on this string
+
+    const y = mT + ((s-1)/9) * mNeckH;
+
+    // How many voicing moves is this change?
+    const partsA = new Set(dA.bestCombo.parts.filter(v=>v!=='open'&&stringChanges[s].find(c=>c.v===v)));
+    const partsB = new Set(dB.bestCombo.parts.filter(v=>v!=='open'&&stringChanges[s].find(c=>c.v===v)));
+    const added   = [...partsB].filter(v=>!partsA.has(v));
+    const removed = [...partsA].filter(v=>!partsB.has(v));
+    const moves = added.length + removed.length;
+    const opacity = moves <= 1 ? '1' : moves === 2 ? '0.65' : '0.4';
+
+    // Color: green if adding, amber if releasing, mixed if both
+    const col = added.length && removed.length ? '#c8a84a'
+              : added.length ? '#48c870'
+              : '#e06060';
+
+    // Change label: "−B" for release, "+A" for engage, "B→A" for swap
+    let label;
+    if (removed.length && !added.length)      label = '−' + removed.join('');
+    else if (added.length && !removed.length) label = '+' + added.join('');
+    else                                       label = removed.join('') + '→' + added.join('');
+
+    // Draw horizontal arrow line
+    svg += `<line x1="4" y1="${y}" x2="${mW-4}" y2="${y}" stroke="${col}" stroke-width="${moves<=1?1.5:1}" opacity="${opacity}"/>`;
+    // Arrowhead pointing right
+    svg += `<polygon points="${mW-4},${y} ${mW-9},${y-3} ${mW-9},${y+3}" fill="${col}" opacity="${opacity}"/>`;
+    // Change label centered
+    svg += `<text x="${mW/2}" y="${y-3}" text-anchor="middle" font-size="6.5" font-family="'IBM Plex Mono',monospace" font-weight="600" fill="${col}" opacity="${opacity}">${label}</text>`;
   }
 
-  svg+=`</svg>`;
+  svg += `</svg>`;
 
-  const coverage=hits.length;
-  const coverageLabel=coverage>=4?'full':coverage>=2?'partial':'sparse';
-  const coverageCol=coverage>=4?'#48c870':coverage>=2?'#c8a84a':'#888878';
-
-  return {svg, coverage, coverageLabel, coverageCol};
+  return `<div class="fret-voice-connector">
+    <div style="height:37px"></div><!-- spacer matching label+recipe height -->
+    ${svg}
+  </div>`;
 }
 
 function buildFretBreakdown(fret) {
@@ -1643,27 +1834,42 @@ function buildFretBreakdown(fret) {
   }
   if (!uniqueChords.length) return '';
 
-  const minis=uniqueChords.map((ch,ci)=>{
-    const col=CHORD_COLORS[ci%CHORD_COLORS.length];
-    const {svg,coverage,coverageLabel,coverageCol}=buildMiniNeckSVG(ch,fret,col,fbdNoteMode);
-    return `<div class="fret-mini-neck">
-      <div class="fret-mini-label" style="color:${col}">${ch.name}</div>
-      <div class="fret-mini-coverage" style="color:${coverageCol}">${coverageLabel} · ${coverage}</div>
-      ${svg}
-    </div>`;
-  }).join('');
+  const mode = MODES.find(m=>m.name===keyMode)||MODES[0];
 
-  const noteActive  = fbdNoteMode==='note'   ? 'active' : '';
-  const degreeActive= fbdNoteMode==='degree' ? 'active' : '';
+  // Build all chord data first so we can compute connectors
+  const chordData = uniqueChords.map((ch,ci) => {
+    const col = CHORD_COLORS[ci%CHORD_COLORS.length];
+    const {svg, hits, recipe, bestCombo, comboNotes} = buildMiniNeckSVG(ch, fret, col, fbdNoteMode);
+    const noteCount = hits.length;
+    const statusCol = noteCount>=3?'#48c870':noteCount>=1?'#c8a84a':'#888878';
+    const roman = ch.parsed ? romanNumeral(ch.parsed.root, ch.parsed.quality, keyRoot, mode.intervals) : '';
+    return {ch, col, svg, hits, recipe, roman, statusCol, bestCombo, comboNotes};
+  });
+
+  // Build interleaved minis + connectors
+  const parts = [];
+  for (let i = 0; i < chordData.length; i++) {
+    const d = chordData[i];
+    parts.push(`<div class="fret-mini-neck">
+      <div class="fret-mini-label" style="color:${d.col}">${d.ch.name}<span style="color:var(--text-dim);font-size:10px;font-family:'IBM Plex Mono',monospace;margin-left:5px">${d.roman}</span></div>
+      <div class="fret-mini-coverage" style="color:${d.statusCol};font-size:10px">${d.recipe}</div>
+      ${d.svg}
+    </div>`);
+
+    // Add connector between this chord and the next
+    if (i < chordData.length - 1) {
+      parts.push(buildVoiceConnector(chordData[i], chordData[i+1], fret));
+    }
+  }
+  const minis = parts.join('');
+
+  const noteActive   = fbdNoteMode==='note'   ? 'active' : '';
+  const degreeActive = fbdNoteMode==='degree' ? 'active' : '';
 
   return `<div class="fret-breakdown" id="fret-breakdown-panel" data-fret="${fret}">
     <div class="fret-breakdown-header">
-      <div class="fret-breakdown-title">Fret ${fret} · chord voicings</div>
+      <div class="fret-breakdown-title">Fret ${fret} · how to play each chord</div>
       <div class="fret-breakdown-controls">
-        <button class="fbd-toggle-btn ${noteActive}"
-          onclick="setFbdMode('note',this)">Note</button>
-        <button class="fbd-toggle-btn ${degreeActive}"
-          onclick="setFbdMode('degree',this)">Degree</button>
         <button class="fbd-close-btn" onclick="closeFretBreakdown()">✕</button>
       </div>
     </div>
@@ -1671,16 +1877,16 @@ function buildFretBreakdown(fret) {
   </div>`;
 }
 
-function setFbdMode(mode, btn) {
-  fbdNoteMode = mode;
-  const panel = document.getElementById('fret-breakdown-panel');
-  if (!panel) return;
-  panel.querySelectorAll('.fbd-toggle-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  // Rebuild with new mode
-  const fret = parseInt(panel.dataset.fret);
+function setFbdMode(mode) {
+  if (activeSongId === null) return;
   const container = document.getElementById('fret-breakdown-container-' + activeSongId);
-  if (container) { loadSongState(activeSongId); container.innerHTML = buildFretBreakdown(fret); saveSongState(activeSongId); }
+  const panel = document.getElementById('fret-breakdown-panel');
+  if (!panel || !container) return;
+  const fret = parseInt(panel.dataset.fret);
+  loadSongState(activeSongId);
+  fbdNoteMode = mode; // set AFTER loadSongState so it isn't overwritten
+  container.innerHTML = buildFretBreakdown(fret);
+  saveSongState(activeSongId);
 }
 
 function closeFretBreakdown() {
@@ -1711,24 +1917,40 @@ function computeKeyMap(songId, wCov, wEase, wChord) {
   const normed  = scores.map(s=>({...s, norm:s.score/maxSc}));
   const ranked  = [...normed].sort((a,b)=>b.score-a.score).slice(0,5);
 
-  // Scale legend
-  const noteLegend = scaleArr.map(n=>{
+  // Scale legend — show diatonic chord names (Gmaj → G, Gmin → Gm)
+  const noteLegend = scaleArr.map((n, degIdx) => {
     const cls = n===keyRoot?'tone-root':ctSet.has(n)?'tone-chord':'tone-scale';
-    return `<span class="${cls}">${n}</span>`;
+    // Determine diatonic chord quality for this scale degree
+    // Triads built on each scale degree: check if 3rd is major or minor
+    const third = mode.intervals[(degIdx+2) % mode.intervals.length];
+    const thirdInterval = ((third - mode.intervals[degIdx]) + 12) % 12;
+    const isDim = (() => {
+      const fifth = mode.intervals[(degIdx+4) % mode.intervals.length];
+      const fifthInterval = ((fifth - mode.intervals[degIdx]) + 12) % 12;
+      return thirdInterval === 3 && fifthInterval === 6;
+    })();
+    const isMinor = thirdInterval === 3 && !isDim;
+    const suffix = isDim ? '°' : isMinor ? 'm' : '';
+    return `<span class="${cls}">${n}${suffix}</span>`;
   }).join('  ');
 
   // Top-5 cards
   const cards = ranked.map((s,i)=>{
     const col=heatColor(s.norm), pct=Math.round(s.norm*100);
-    const reach=new Set();
+    const reachDegrees=[];
+    const seen=new Set();
     for (let str=1;str<=10;str++)
       for (const o of stringNotesAt(str,s.fret))
-        if (scaleNotes.has(o.note)&&keyVoicings.has(o.voicing)) reach.add(o.note);
+        if (scaleNotes.has(o.note)&&keyVoicings.has(o.voicing)&&!seen.has(o.note)) {
+          seen.add(o.note);
+          const semDist=(noteIdx(o.note)-ri+12)%12;
+          reachDegrees.push(diatonicDegreeName(semDist, mode.intervals));
+        }
     return `<div class="key-fret-card" style="border-color:${col}88;border-left:3px solid ${col}">
       <div class="kfc-rank" style="color:${col}">#${i+1}</div>
       <div class="kfc-fret" style="color:${col}">Fret ${s.fret}</div>
       <div class="kfc-score" style="color:var(--text-dim)">${pct}%</div>
-      <div class="kfc-notes">${[...reach].join(' ')}</div>
+      <div class="kfc-notes">${reachDegrees.join(' ')}</div>
     </div>`;
   }).join('');
 
@@ -1745,7 +1967,9 @@ function computeKeyMap(songId, wCov, wEase, wChord) {
   const dotNotes = visibleNotes.size > 0 ? visibleNotes : scaleNotes;
   const neckSvg = buildKeyNeck(normed, scaleNotes, dotNotes, ctSet, scaleArr);
 
-  document.getElementById('key-result-' + songId).innerHTML=`
+  const keyResultEl = document.getElementById('key-result-' + songId);
+  if (!keyResultEl) return;
+  keyResultEl.innerHTML=`
     <div class="key-result-title">${keyRoot} ${mode.label}</div>
     <div class="key-scale-notes">${noteLegend}
       <span style="margin-left:1rem;font-size:9px;color:var(--text-dim)">
@@ -1757,7 +1981,6 @@ function computeKeyMap(songId, wCov, wEase, wChord) {
     <div class="key-heat-label">Top 5 positions — long press to see chord voicings</div>
     <div class="key-fret-cards" id="top5-cards-container-${songId}">${cards}</div>
     <div id="fret-breakdown-container-${songId}"></div>
-    <div id="key-section-cards-${songId}"></div>
     <div class="key-heat-label">Playability heatmap</div>
     <div class="neck-wrap">
       <svg id="neck3" viewBox="0 0 980 380" xmlns="http://www.w3.org/2000/svg">${neckSvg}</svg>
@@ -1793,106 +2016,6 @@ function computeKeyMap(songId, wCov, wEase, wChord) {
       card.addEventListener('mouseup',    cancelPress);
       card.addEventListener('mouseleave', cancelPress);
     });
-  }
-
-  // Build interactive section cards near the map
-  if (songSections.length) {
-    const container = document.getElementById('key-section-cards-' + songId);
-    if (container) {
-      const header = document.createElement('div');
-      header.className='key-heat-label';
-      header.style.marginTop='1.25rem';
-      header.textContent='Song sections';
-      container.appendChild(header);
-
-      songSections.forEach((sec,si)=>{
-        const card = document.createElement('div');
-        card.className='section-card';
-        card.style.cssText='margin-bottom:5px;opacity:'+(sec.active?'1':'0.45')+';';
-
-        // ON/OFF toggle
-        const tog = document.createElement('button');
-        tog.className='section-active-btn'+(sec.active?'':' dim');
-        tog.textContent=sec.active?'ON':'OFF';
-        tog.style.cssText='flex-shrink:0;min-width:48px;min-height:36px;font-size:12px;-webkit-tap-highlight-color:transparent;';
-        tog.onclick=(e)=>{
-          e.stopPropagation();
-          sec.active=!sec.active;
-          tog.textContent=sec.active?'ON':'OFF';
-          tog.classList.toggle('dim',!sec.active);
-          card.style.opacity=sec.active?'1':'0.45';
-          soloChord=null;
-          soloSection=null;
-          document.querySelectorAll('.chord-pill.chord-solo').forEach(el=>el.classList.remove('chord-solo'));
-          document.querySelectorAll('.section-solo-btn.active').forEach(el=>el.classList.remove('active'));
-          liveUpdate();
-        };
-        card.appendChild(tog);
-
-        // SOLO button
-        const soloBtn = document.createElement('button');
-        const isSoloed = soloSection === si;
-        soloBtn.className='section-solo-btn'+(isSoloed?' active':'');
-        soloBtn.textContent='SOLO';
-        soloBtn.onclick=(e)=>{
-          e.stopPropagation();
-          if (soloSection === si) {
-            // Unsolo
-            soloSection=null;
-            soloBtn.classList.remove('active');
-          } else {
-            // Solo this section
-            soloSection=si;
-            soloChord=null;
-            document.querySelectorAll('.chord-pill.chord-solo').forEach(el=>el.classList.remove('chord-solo'));
-            document.querySelectorAll('.section-solo-btn.active').forEach(el=>el.classList.remove('active'));
-            soloBtn.classList.add('active');
-          }
-          liveUpdate();
-        };
-        card.appendChild(soloBtn);
-
-        // Section label (read-only here — rename in upper section)
-        const lbl = document.createElement('span');
-        lbl.className='section-label-btn';
-        lbl.style.cssText='cursor:default;flex:0 0 auto;min-width:80px;';
-        lbl.textContent=sec.label;
-        card.appendChild(lbl);
-
-        // Chord pills — fully interactive
-        const pw = document.createElement('div');
-        pw.className='section-chords';
-        sec.chords.forEach(ch=>{
-          const info = chordPillInfo(ch.name, keyRoot, mode.intervals);
-          let cls = info.cls + (ch.active?'':' chord-inactive');
-          const p = document.createElement('div');
-          p.className=cls; p.textContent=info.label;
-          p.style.cssText='cursor:pointer;user-select:none;-webkit-user-select:none;white-space:nowrap;opacity:'+(ch.active?'1':'0.35')+';';
-          p.onclick=()=>{
-            // Solo mode: tap to solo, tap again to unsolo
-            if (soloChord && soloChord.name===ch.name) {
-              soloChord=null;
-              p.classList.remove('chord-solo');
-            } else if (soloChord) {
-              // Switch solo to this chord
-              document.querySelectorAll('.chord-pill.chord-solo').forEach(el=>el.classList.remove('chord-solo'));
-              const parsed=parseChordName(ch.name);
-              soloChord=parsed?{name:ch.name,root:parsed.root,quality:parsed.quality}:null;
-              if(soloChord) p.classList.add('chord-solo');
-            } else {
-              // Enter solo mode
-              const parsed=parseChordName(ch.name);
-              soloChord=parsed?{name:ch.name,root:parsed.root,quality:parsed.quality}:null;
-              if(soloChord) p.classList.add('chord-solo');
-            }
-            liveUpdate();
-          };
-          pw.appendChild(p);
-        });
-        card.appendChild(pw);
-        container.appendChild(card);
-      });
-    }
   }
 }
 
@@ -2587,8 +2710,6 @@ function switchTab(name) {
     const song = songs.find(s => s.id === id);
     if (song && song.state.songSections.length) {
       renderSectionListSong(id);
-      // Rebuild interactive section cards near map
-      buildSongResultSections(id);
     }
   }
 }
@@ -2705,6 +2826,132 @@ function renderCopedentTable() {
       Result notes at open position · colors match voicing buttons
     </div>`;
   wrap.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════
+//  EXPORT / IMPORT
+// ═══════════════════════════════════════════════════════
+
+function exportSet() {
+  // Save current song state first
+  if (activeSongId !== null) saveSongState(activeSongId);
+
+  // Build serializable snapshot — save chartText and key state per song
+  const snapshot = {
+    v: 1,
+    setName,
+    songs: songs.map(s => ({
+      id:   s.id,
+      name: s.name,
+      state: {
+        chartText:    s.state.chartText || '',
+        keyRoot:      s.state.keyRoot,
+        keyMode:      s.state.keyMode,
+        keyOverride:  s.state.keyOverride,
+        nodeDisplay:  s.state.nodeDisplay,
+        fbdNoteMode:  s.state.fbdNoteMode,
+        songSections: s.state.songSections,
+        detectedKey:  s.state.detectedKey,
+      }
+    })),
+    nextId
+  };
+
+  const json    = JSON.stringify(snapshot);
+  const encoded = btoa(unescape(encodeURIComponent(json)));
+
+  const area = document.getElementById('export-area');
+  const code = document.getElementById('export-code');
+  area.style.display = '';
+  code.value = encoded;
+  code.select();
+  document.getElementById('import-area').style.display = 'none';
+}
+
+function copyExportCode() {
+  const code = document.getElementById('export-code');
+  code.select();
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(code.value)
+      .then(() => { code.style.borderColor = 'var(--teal)'; setTimeout(()=>code.style.borderColor='var(--border2)', 1500); })
+      .catch(() => document.execCommand('copy'));
+  } else {
+    document.execCommand('copy');
+  }
+}
+
+function showImport() {
+  document.getElementById('import-area').style.display = '';
+  document.getElementById('export-area').style.display = 'none';
+  document.getElementById('import-error').style.display = 'none';
+  document.getElementById('import-code').value = '';
+  document.getElementById('import-code').focus();
+}
+
+function importSet() {
+  const encoded = document.getElementById('import-code').value.trim();
+  const errEl   = document.getElementById('import-error');
+  errEl.style.display = 'none';
+
+  if (!encoded) { errEl.textContent = 'Paste a set code first.'; errEl.style.display = ''; return; }
+
+  let snapshot;
+  try {
+    const json = decodeURIComponent(escape(atob(encoded)));
+    snapshot = JSON.parse(json);
+  } catch(e) {
+    errEl.textContent = 'Invalid code — make sure you copied the whole thing.';
+    errEl.style.display = '';
+    return;
+  }
+
+  if (!snapshot.v || !snapshot.songs) {
+    errEl.textContent = 'Unrecognized format.';
+    errEl.style.display = '';
+    return;
+  }
+
+  if (!confirm(`Load set "${snapshot.setName || 'Untitled'}" with ${snapshot.songs.length} song(s)? This will replace your current set.`)) return;
+
+  // Clear current songs and tabs
+  songs.forEach(s => {
+    document.getElementById('tab-song-' + s.id)?.remove();
+    document.getElementById('panel-song-' + s.id)?.remove();
+  });
+  songs   = [];
+  nextId  = snapshot.nextId || 1;
+  setName = snapshot.setName || '';
+  activeSongId = null;
+
+  // Restore set name
+  const inp = document.getElementById('set-name-input');
+  if (inp) inp.value = setName;
+  updateSetName(setName);
+
+  // Restore songs
+  snapshot.songs.forEach(saved => {
+    const song = {
+      id:    saved.id,
+      name:  saved.name,
+      state: { ...defaultSongState(), ...saved.state,
+               // Restore sections with active flags
+               songSections: (saved.state.songSections || []).map(sec => ({
+                 ...sec,
+                 chords: (sec.chords || []).map(ch => typeof ch === 'string' ? {name:ch,active:true} : ch)
+               }))
+             }
+    };
+    songs.push(song);
+    createSongPanel(song);
+    createSongTab(song);
+  });
+
+  renderSetOrder();
+  document.getElementById('import-area').style.display = 'none';
+  document.getElementById('export-area').style.display = 'none';
+
+  // Switch to first song if any
+  if (songs.length) switchTab('song-' + songs[0].id);
 }
 
 // ── Startup ───────────────────────────────────────────
