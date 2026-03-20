@@ -8,6 +8,18 @@
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+  html, body {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* Re-enable selection for text inputs and textareas */
+  input, textarea {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
   :root {
     --bg:        #0d0e0b;
     --bg2:       #141510;
@@ -683,7 +695,7 @@
 
 <header>
   <div class="header-title" id="header-title">Steel Note Finder</div>
-  <div class="header-sub">Williams 400 · E9 · Frets 0–12 · v2026-03-19 20:31 MT</div>
+  <div class="header-sub">Williams 400 · E9 · Frets 0–12 · v2026-03-19 20:22 MT</div>
 </header>
 
 <div class="main">
