@@ -695,7 +695,7 @@
 
 <header>
   <div class="header-title" id="header-title">Steel Note Finder</div>
-  <div class="header-sub">Williams 400 · E9 · Frets 0–12 · v2026-03-19 20:22 MT</div>
+  <div class="header-sub">Williams 400 · E9 · Frets 0–12 · v2026-03-19 22:18 MT</div>
 </header>
 
 <div class="main">
@@ -2159,6 +2159,7 @@ function addSong(name) {
   createSongTab(song);
   renderSetOrder();
   switchTab('song-' + id);
+  saveToLocalStorage();
 }
 
 function deleteSong(id) {
@@ -2172,6 +2173,7 @@ function deleteSong(id) {
   if (tab)   tab.remove();
   if (panel) panel.remove();
   renderSetOrder();
+  saveToLocalStorage();
   // Switch to settings if no songs left, else first song
   if (songs.length) switchTab('song-' + songs[0].id);
   else switchTab('settings');
@@ -2186,6 +2188,7 @@ function renameSong(id, name) {
   // Update title inside panel if currently shown
   const titleEl = document.getElementById('song-title-' + id);
   if (titleEl) titleEl.value = name;
+  saveToLocalStorage();
 }
 
 function moveSong(id, dir) {
@@ -2202,6 +2205,7 @@ function moveSong(id, dir) {
     if (t) tabsEl.appendChild(t);
   });
   renderSetOrder();
+  saveToLocalStorage();
   // Refresh nav bars on all song panels
   songs.forEach(s => refreshSongNav(s.id));
 }
@@ -2519,11 +2523,12 @@ function parseSong(id) {
   renderSectionListSong(id);
   renderKeyDetectionSong(id, candidates.slice(0,3));
   computeKeyMapSong(id);
+  saveToLocalStorage();
 }
 
 function liveUpdateSong(id) {
   const song = songs.find(s => s.id === id);
-  if (song && song.state.mapRendered) computeKeyMapSong(id);
+  if (song && song.state.mapRendered) { computeKeyMapSong(id); saveToLocalStorage(); }
 }
 
 function setNodeDisplaySong(id, btn) {
@@ -2731,6 +2736,7 @@ function updateSetName(val) {
   const el = document.getElementById('header-title');
   if (el) el.textContent = val || 'Steel Note Finder';
   document.title = val || 'Steel Note Finder';
+  saveToLocalStorage();
 }
 
 
@@ -2966,10 +2972,85 @@ function importSet() {
   if (songs.length) switchTab('song-' + songs[0].id);
 }
 
+// ═══════════════════════════════════════════════════════
+//  LOCAL STORAGE — auto-save & restore
+// ═══════════════════════════════════════════════════════
+const LS_KEY = 'steel-note-finder-set';
+
+function saveToLocalStorage() {
+  if (activeSongId !== null) saveSongState(activeSongId);
+  try {
+    const snapshot = {
+      v: 1,
+      setName,
+      nextId,
+      songs: songs.map(s => ({
+        id:   s.id,
+        name: s.name,
+        state: {
+          chartText:    s.state.chartText || '',
+          keyRoot:      s.state.keyRoot,
+          keyMode:      s.state.keyMode,
+          keyOverride:  s.state.keyOverride,
+          nodeDisplay:  s.state.nodeDisplay,
+          fbdNoteMode:  s.state.fbdNoteMode,
+          songSections: s.state.songSections,
+          detectedKey:  s.state.detectedKey,
+        }
+      }))
+    };
+    localStorage.setItem(LS_KEY, JSON.stringify(snapshot));
+  } catch(e) {
+    console.warn('Could not save to localStorage:', e);
+  }
+}
+
+function loadFromLocalStorage() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return false;
+    const snapshot = JSON.parse(raw);
+    if (!snapshot.v || !snapshot.songs) return false;
+
+    setName = snapshot.setName || '';
+    nextId  = snapshot.nextId  || 1;
+
+    const inp = document.getElementById('set-name-input');
+    if (inp) inp.value = setName;
+    updateSetName(setName);
+
+    snapshot.songs.forEach(saved => {
+      const song = {
+        id:    saved.id,
+        name:  saved.name,
+        state: { ...defaultSongState(), ...saved.state,
+                 songSections: (saved.state.songSections || []).map(sec => ({
+                   ...sec,
+                   chords: (sec.chords || []).map(ch => typeof ch === 'string' ? {name:ch,active:true} : ch)
+                 }))
+               }
+      };
+      songs.push(song);
+      createSongPanel(song);
+      createSongTab(song);
+    });
+
+    return true;
+  } catch(e) {
+    console.warn('Could not load from localStorage:', e);
+    return false;
+  }
+}
+
 // ── Startup ───────────────────────────────────────────
+const restored = loadFromLocalStorage();
 renderSetOrder();
 renderCopedentTable();
-switchTab('settings');
+if (restored && songs.length) {
+  switchTab('song-' + songs[0].id);
+} else {
+  switchTab('settings');
+}
 </script>
 </body>
 </html>
