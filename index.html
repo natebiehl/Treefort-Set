@@ -2081,9 +2081,9 @@ function refreshSongNav(id) {
   const prevId = hasPrev ? songs[idx-1].id : null;
   const nextId = hasNext ? songs[idx+1].id : null;
   navBar.innerHTML = `
-    <button class="song-nav-btn" ${hasPrev?'':'disabled'} onclick="switchTab('song-${prevId}')">◀ ${hasPrev?songs[idx-1].name:'–'}</button>
+    <button class="song-nav-btn" ${hasPrev?'':'disabled'} onclick="${hasPrev?`switchTab('song-${prevId}')`:'void 0'}">◀ ${hasPrev?songs[idx-1].name:'–'}</button>
     <span style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-dim)">${idx+1} of ${songs.length}</span>
-    <button class="song-nav-btn" ${hasNext?'':'disabled'} onclick="switchTab('song-${nextId}')">${hasNext?songs[idx+1].name:'–'} ▶</button>
+    <button class="song-nav-btn" ${hasNext?'':'disabled'} onclick="${hasNext?`switchTab('song-${nextId}')`:'void 0'}">${hasNext?songs[idx+1].name:'–'} ▶</button>
   `;
 }
 
@@ -2108,6 +2108,7 @@ function createSongPanel(song) {
 }
 
 function buildSongPanelHTML(song) {
+  const st  = song.state;
   const idx = songs.findIndex(s => s.id === song.id);
   const hasPrev = idx > 0;
   const hasNext = idx < songs.length - 1;
@@ -2116,9 +2117,9 @@ function buildSongPanelHTML(song) {
   return `
     <!-- Song nav -->
     <div class="song-nav-bar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;padding-bottom:0.75rem;border-bottom:1px solid var(--border)">
-      <button class="song-nav-btn" ${hasPrev?'':'disabled'} onclick="switchTab('song-${prevId}')">◀ ${hasPrev?songs[idx-1].name:'–'}</button>
+      <button class="song-nav-btn" ${hasPrev?'':'disabled'} onclick="${hasPrev?`switchTab('song-${prevId}')`:'void 0'}">◀ ${hasPrev?songs[idx-1].name:'–'}</button>
       <span style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-dim)">${idx+1} of ${songs.length}</span>
-      <button class="song-nav-btn" ${hasNext?'':'disabled'} onclick="switchTab('song-${nextId}')">${ hasNext?songs[idx+1].name:'–'} ▶</button>
+      <button class="song-nav-btn" ${hasNext?'':'disabled'} onclick="${hasNext?`switchTab('song-${nextId}')`:'void 0'}">${hasNext?songs[idx+1].name:'–'} ▶</button>
     </div>
 
     <!-- Song title -->
