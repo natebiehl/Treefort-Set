@@ -695,7 +695,7 @@
 
 <header>
   <div class="header-title" id="header-title">Steel Note Finder</div>
-  <div class="header-sub">Williams 400 · E9 · Frets 0–12 · v2026-03-19 22:18 MT</div>
+  <div class="header-sub">Williams 400 · E9 · Frets 0–12 · v2026-03-19 22:31 MT</div>
 </header>
 
 <div class="main">
@@ -980,7 +980,7 @@ function drawNeckBase() {
     const x=fretX(f), pm=PM[f];
     const col = pm ? pm.label : '#383830';
     const weight = (f===0||f===12) ? '600' : '400';
-    out += `<text x="${x}" y="${T-12}" text-anchor="middle" font-size="10" font-family="'IBM Plex Mono',monospace" font-weight="${weight}" fill="${col}">${f}</text>`;
+    out += `<text x="${x}" y="${T-26}" text-anchor="middle" font-size="10" font-family="'IBM Plex Mono',monospace" font-weight="${weight}" fill="${col}">${f}</text>`;
   }
   return out;
 }
@@ -2066,7 +2066,7 @@ function buildKeyNeck(normed, scaleNotes, dotNotes, ctSet, scaleArr) {
     // Size: 10px at low, 18px at full heat
     const fs  = Math.round(10 + norm * 8);
     const fw  = norm > 0.5 ? '800' : '600';
-    const labelY = T - 12;
+    const labelY = T - 26;
     // White knockout rect so heat label reads cleanly over whatever's behind
     out+=`<rect x="${x - fs}" y="${labelY - fs * 0.8}" width="${fs * 2}" height="${fs * 1.1}"
             fill="var(--bg)" opacity="0.7" rx="2"/>`;
@@ -2206,25 +2206,9 @@ function moveSong(id, dir) {
   });
   renderSetOrder();
   saveToLocalStorage();
-  // Refresh nav bars on all song panels
-  songs.forEach(s => refreshSongNav(s.id));
 }
 
-function refreshSongNav(id) {
-  const panel = document.getElementById('panel-song-' + id);
-  if (!panel) return;
-  const navBar = panel.querySelector('.song-nav-bar');
-  if (!navBar) return;
-  const idx = songs.findIndex(s => s.id === id);
-  const hasPrev = idx > 0, hasNext = idx < songs.length - 1;
-  const prevId = hasPrev ? songs[idx-1].id : null;
-  const nextId = hasNext ? songs[idx+1].id : null;
-  navBar.innerHTML = `
-    <button class="song-nav-btn" ${hasPrev?'':'disabled'} onclick="${hasPrev?`switchTab('song-${prevId}')`:'void 0'}">◀ ${hasPrev?songs[idx-1].name:'–'}</button>
-    <span style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-dim)">${idx+1} of ${songs.length}</span>
-    <button class="song-nav-btn" ${hasNext?'':'disabled'} onclick="${hasNext?`switchTab('song-${nextId}')`:'void 0'}">${hasNext?songs[idx+1].name:'–'} ▶</button>
-  `;
-}
+
 
 // ── Create DOM elements for a song ───────────────────
 function createSongTab(song) {
@@ -2248,19 +2232,7 @@ function createSongPanel(song) {
 
 function buildSongPanelHTML(song) {
   const st  = song.state;
-  const idx = songs.findIndex(s => s.id === song.id);
-  const hasPrev = idx > 0;
-  const hasNext = idx < songs.length - 1;
-  const prevId  = hasPrev ? songs[idx-1].id : null;
-  const nextId  = hasNext ? songs[idx+1].id : null;
   return `
-    <!-- Song nav -->
-    <div class="song-nav-bar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;padding-bottom:0.75rem;border-bottom:1px solid var(--border)">
-      <button class="song-nav-btn" ${hasPrev?'':'disabled'} onclick="${hasPrev?`switchTab('song-${prevId}')`:'void 0'}">◀ ${hasPrev?songs[idx-1].name:'–'}</button>
-      <span style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-dim)">${idx+1} of ${songs.length}</span>
-      <button class="song-nav-btn" ${hasNext?'':'disabled'} onclick="${hasNext?`switchTab('song-${nextId}')`:'void 0'}">${hasNext?songs[idx+1].name:'–'} ▶</button>
-    </div>
-
     <!-- Song title -->
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;padding-bottom:0.75rem;border-bottom:1px solid var(--border)">
       <input id="song-title-${song.id}" type="text" value="${song.name}"
@@ -2482,6 +2454,8 @@ function buildKeyGridsSong(id) {
           const g = document.getElementById(gid);
           if(g) g.querySelectorAll('.note-mini-btn').forEach(b=>b.classList.toggle('active',b.textContent===n));
         });
+        saveSongState(id);
+        renderSectionListSong(id);
         liveUpdateSong(id);
       };
       rg.appendChild(btn);
@@ -2498,6 +2472,8 @@ function buildKeyGridsSong(id) {
           const g = document.getElementById(gid);
           if(g) g.querySelectorAll('.key-mode-btn').forEach(b=>{ const mm=MODES.find(mm=>mm.label===b.textContent); b.classList.toggle('active',mm&&mm.name===m.name); });
         });
+        saveSongState(id);
+        renderSectionListSong(id);
         liveUpdateSong(id);
       };
       mg.appendChild(btn);
@@ -2576,7 +2552,14 @@ function renderSectionListSong(id) {
       tog.textContent = sec.active ? 'ON' : 'OFF';
       tog.classList.toggle('dim', !sec.active);
       card.style.opacity = sec.active ? '1' : '0.45';
-      loadSongState(id); soloChord = null; soloSection = null; saveSongState(id);
+      // Update the song state directly since we modified sec.active in-place
+      const song2 = songs.find(s => s.id === id);
+      if (song2) {
+        song2.state.songSections = JSON.parse(JSON.stringify(song.state.songSections));
+        song2.state.soloChord = null;
+        song2.state.soloSection = null;
+      }
+      loadSongState(id); saveSongState(id);
       liveUpdateSong(id);
     };
     card.appendChild(tog);
@@ -2588,9 +2571,17 @@ function renderSectionListSong(id) {
     soloBtn.onclick = e => {
       e.stopPropagation();
       loadSongState(id);
-      if (soloSection === si) { soloSection = null; soloBtn.classList.remove('active'); }
-      else { soloSection = si; soloChord = null; document.querySelectorAll(`#section-list-${id} .section-solo-btn`).forEach(b=>b.classList.remove('active')); soloBtn.classList.add('active'); }
-      saveSongState(id); liveUpdateSong(id);
+      if (soloSection === si) {
+        soloSection = null;
+        soloBtn.classList.remove('active');
+      } else {
+        soloSection = si;
+        soloChord = null;
+        document.querySelectorAll(`#section-list-${id} .section-solo-btn`).forEach(b=>b.classList.remove('active'));
+        soloBtn.classList.add('active');
+      }
+      saveSongState(id);
+      liveUpdateSong(id);
     };
     card.appendChild(soloBtn);
 
