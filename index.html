@@ -8,18 +8,6 @@
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  html, body {
-    -webkit-user-select: none;
-    user-select: none;
-    -webkit-touch-callout: none;
-  }
-
-  /* Re-enable selection for text inputs and textareas */
-  input, textarea {
-    -webkit-user-select: text;
-    user-select: text;
-  }
-
   :root {
     --bg:        #0d0e0b;
     --bg2:       #141510;
@@ -695,7 +683,7 @@
 
 <header>
   <div class="header-title" id="header-title">Steel Note Finder</div>
-  <div class="header-sub">Williams 400 · E9 · Frets 0–12 · v2026-03-19 22:31 MT</div>
+  <div class="header-sub">Williams 400 · E9 · Frets 0–12 · v2026-03-22 17:55 MT</div>
 </header>
 
 <div class="main">
@@ -980,7 +968,7 @@ function drawNeckBase() {
     const x=fretX(f), pm=PM[f];
     const col = pm ? pm.label : '#383830';
     const weight = (f===0||f===12) ? '600' : '400';
-    out += `<text x="${x}" y="${T-26}" text-anchor="middle" font-size="10" font-family="'IBM Plex Mono',monospace" font-weight="${weight}" fill="${col}">${f}</text>`;
+    out += `<text x="${x}" y="${T-12}" text-anchor="middle" font-size="10" font-family="'IBM Plex Mono',monospace" font-weight="${weight}" fill="${col}">${f}</text>`;
   }
   return out;
 }
@@ -1745,18 +1733,37 @@ function buildMiniNeckSVG(ch, fret, col, noteMode) {
   }
   svg += `<line x1="${sx}" y1="${mT}" x2="${sx}" y2="${mB}" stroke="#808060" stroke-width="2.5"/>`;
 
+  const MINI_PEDALS = new Set(['A','B','C']);
+  const MINI_LEVERS = new Set(['LKL','LKR','LKV','RKL','RKR']);
+  function miniDotShape(voicing, cx, cy, r, fill, opacity) {
+    if (MINI_PEDALS.has(voicing)) {
+      const s = r * 1.72;
+      return `<rect x="${cx-s/2}" y="${cy-s/2}" width="${s}" height="${s}"
+                fill="${fill}" opacity="${opacity}" rx="3" ry="3"/>`;
+    } else if (MINI_LEVERS.has(voicing)) {
+      const pw = r * 2.1, ph = r * 1.3;
+      return `<rect x="${cx-pw/2}" y="${cy-ph/2}" width="${pw}" height="${ph}"
+                fill="${fill}" opacity="${opacity}" rx="${ph/2}" ry="${ph/2}"/>`;
+    } else {
+      return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" opacity="${opacity}"/>`;
+    }
+  }
+
   for (const h of hits) {
     const y = mT+((h.string-1)/9)*mNeckH;
     const dotCol = h.isRoot ? '#e06060' : col;
     const r = 13;
-    svg += `<circle cx="${sx}" cy="${y}" r="${r}" fill="${dotCol}" opacity="0.93"/>`;
+    // Determine the voicing for this string from bestCombo
+    const stringVoicing = bestCombo.parts.filter(v => v !== 'open' && stringChanges[h.string].find(c => c.v === v)).join('+') || 'open';
+    // Use the first part for shape classification (e.g. 'A' from 'A+B')
+    const shapeVoicing = bestCombo.parts.find(v => v !== 'open' && stringChanges[h.string].find(c => c.v === v)) || 'open';
+    svg += miniDotShape(shapeVoicing, sx, y, r, dotCol, 0.93);
     // Show note above, degree below inside the dot
     const noteFs = h.note.length>1?7:9;
     const degFs  = h.degree.length>1?6:7;
     svg += `<text x="${sx}" y="${y-2}" text-anchor="middle" dominant-baseline="middle" font-size="${noteFs}" font-family="'Syne',sans-serif" font-weight="600" fill="#0a0b08">${h.note}</text>`;
     svg += `<text x="${sx}" y="${y+5}" text-anchor="middle" dominant-baseline="middle" font-size="${degFs}" font-family="'IBM Plex Mono',monospace" font-weight="400" fill="#0a0b0888">${h.degree}</text>`;
     // Per-string voicing label to the right
-    const stringVoicing = bestCombo.parts.filter(v => v !== 'open' && stringChanges[h.string].find(c => c.v === v)).join('+') || 'open';
     const vLabel = stringVoicing === 'open' ? '·' : stringVoicing;
     svg += `<text x="${sx+r+3}" y="${y+0.5}" dominant-baseline="middle" font-size="8" font-family="'IBM Plex Mono',monospace" font-weight="600" fill="${dotCol}" opacity="0.9">${vLabel}</text>`;
   }
@@ -1998,9 +2005,12 @@ function computeKeyMap(songId, wCov, wEase, wChord) {
       <svg id="neck3" viewBox="0 0 980 380" xmlns="http://www.w3.org/2000/svg">${neckSvg}</svg>
     </div>
     <div class="legend" style="margin-top:0.75rem">
-      <div class="legend-item"><div class="legend-swatch" style="background:#e06060"></div>Root</div>
-      <div class="legend-item"><div class="legend-swatch" style="background:var(--gold)"></div>Chord tone</div>
-      <div class="legend-item"><div class="legend-swatch" style="background:var(--text)"></div>Scale tone</div>
+      <div class="legend-item"><svg width="14" height="14" style="flex-shrink:0"><circle cx="7" cy="7" r="6" fill="#555" stroke="#e06060" stroke-width="2.5"/></svg>Root ring</div>
+      <div class="legend-item"><svg width="14" height="14" style="flex-shrink:0"><circle cx="7" cy="7" r="6" fill="#555" stroke="#c8a84a" stroke-width="2.5"/></svg>Chord tone ring</div>
+      <div class="legend-item"><svg width="14" height="14" style="flex-shrink:0"><circle cx="7" cy="7" r="6" fill="#555"/></svg>Scale tone</div>
+      <div class="legend-item"><svg width="14" height="14" style="flex-shrink:0"><circle cx="7" cy="7" r="6" fill="#888"/></svg>Open</div>
+      <div class="legend-item"><svg width="14" height="14" style="flex-shrink:0"><rect x="1" y="1" width="12" height="12" fill="#888" rx="2"/></svg>Pedal (A/B/C)</div>
+      <div class="legend-item"><svg width="14" height="9" style="flex-shrink:0;margin-top:2px"><rect x="0" y="0" width="14" height="9" fill="#888" rx="4.5"/></svg>Lever</div>
     </div>`;
 
   // Wire long-press on top-5 cards to show fret chord breakdown
@@ -2066,13 +2076,47 @@ function buildKeyNeck(normed, scaleNotes, dotNotes, ctSet, scaleArr) {
     // Size: 10px at low, 18px at full heat
     const fs  = Math.round(10 + norm * 8);
     const fw  = norm > 0.5 ? '800' : '600';
-    const labelY = T - 26;
+    const labelY = T - 12;
     // White knockout rect so heat label reads cleanly over whatever's behind
     out+=`<rect x="${x - fs}" y="${labelY - fs * 0.8}" width="${fs * 2}" height="${fs * 1.1}"
             fill="var(--bg)" opacity="0.7" rx="2"/>`;
     out+=`<text x="${x}" y="${labelY}" text-anchor="middle"
             font-size="${fs}" font-family="'Syne',sans-serif"
             font-weight="${fw}" fill="${col}">${fret}</text>`;
+  }
+
+  // Dot shape helper — circle for open, rounded-square for pedals, pill for levers
+  const PEDALS  = new Set(['A','B','C']);
+  const LEVERS  = new Set(['LKL','LKR','LKV','RKL','RKR']);
+  function drawDotShape(cx, cy, r, fill, ringCol, opacity, out2) {
+    // fill = voicing color; ringCol = role ring color or null
+    const strokeW = ringCol ? 2.5 : 0;
+    const stroke  = ringCol || 'none';
+    // circle (open)
+    out2 += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" opacity="${opacity}"
+               stroke="${stroke}" stroke-width="${strokeW}"/>`;
+    return out2;
+  }
+  function drawShapeForVoicing(voicing, cx, cy, r, fill, ringCol, opacity) {
+    const sw  = ringCol ? 2.5 : 0;
+    const str = ringCol || 'none';
+    if (PEDALS.has(voicing)) {
+      // Rounded square
+      const s = r * 1.72;
+      return `<rect x="${cx-s/2}" y="${cy-s/2}" width="${s}" height="${s}"
+                fill="${fill}" opacity="${opacity}" rx="3" ry="3"
+                stroke="${str}" stroke-width="${sw}"/>`;
+    } else if (LEVERS.has(voicing)) {
+      // Pill — wide rectangle with fully rounded ends
+      const pw = r * 2.1, ph = r * 1.3;
+      return `<rect x="${cx-pw/2}" y="${cy-ph/2}" width="${pw}" height="${ph}"
+                fill="${fill}" opacity="${opacity}" rx="${ph/2}" ry="${ph/2}"
+                stroke="${str}" stroke-width="${sw}"/>`;
+    } else {
+      // Circle (open)
+      return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" opacity="${opacity}"
+                stroke="${str}" stroke-width="${sw}"/>`;
+    }
   }
 
   // Dots
@@ -2085,17 +2129,22 @@ function buildKeyNeck(normed, scaleNotes, dotNotes, ctSet, scaleArr) {
       const y=stringY(s);
       opts.forEach((o,i)=>{
         const isRoot=o.note===scaleArr[0], isChord=ctSet.has(o.note);
-        const col=isRoot?'#e06060':isChord?'#c8a84a':'#888878';
-        const r = isRoot?DOT_R+2:DOT_R-1;
+        // Fill = voicing color
+        const fill = COLORS[o.voicing] || '#888878';
+        // Role ring: red for root, gold for chord tone, none for scale tone
+        const ringCol = isRoot ? '#e06060' : isChord ? '#c8a84a' : null;
+        const r = DOT_R;
         const oy= opts.length>1 ? y+(i-(opts.length-1)/2)*(DOT_R*2.2) : y;
         const lbl = nodeLabel(o.note, o.voicing, scaleArr);
 
         if (lbl.horiz && lbl.bot) {
-          // Horizontal pill: [top | bot] side by side
+          // Horizontal pill label mode — draw a wide pill shape regardless of voicing type
           const pw=r+16, ph=r+2;
+          const sw  = ringCol ? 2.5 : 0;
+          const str = ringCol || 'none';
           out+=`<rect x="${x-pw}" y="${oy-ph}" width="${pw*2}" height="${ph*2}"
-                  fill="${col}" opacity="0.88" rx="${ph}"/>`;
-          // divider line
+                  fill="${fill}" opacity="0.88" rx="${ph}"
+                  stroke="${str}" stroke-width="${sw}"/>`;
           out+=`<line x1="${x}" y1="${oy-ph+2}" x2="${x}" y2="${oy+ph-2}"
                   stroke="#0a0b0888" stroke-width="1"/>`;
           const topFs = lbl.top.length>2?7:lbl.top.length>1?8:9;
@@ -2105,7 +2154,7 @@ function buildKeyNeck(normed, scaleNotes, dotNotes, ctSet, scaleArr) {
           out+=`<text x="${x+pw/2+1}" y="${oy+0.5}" text-anchor="middle" dominant-baseline="middle"
                   font-size="${botFs}" font-family="'IBM Plex Mono',monospace" font-weight="600" fill="#0a0b08">${lbl.bot}</text>`;
         } else {
-          out+=`<circle cx="${x}" cy="${oy}" r="${r}" fill="${col}" opacity="0.88"/>`;
+          out += drawShapeForVoicing(o.voicing, x, oy, r, fill, ringCol, 0.88);
           const fs = lbl.top.length>2?7:lbl.top.length>1?8:10;
           out+=`<text x="${x}" y="${oy+0.5}" text-anchor="middle" dominant-baseline="middle"
                   font-size="${fs}" font-family="'Syne',sans-serif" font-weight="700" fill="#0a0b08">${lbl.top}</text>`;
@@ -2159,7 +2208,6 @@ function addSong(name) {
   createSongTab(song);
   renderSetOrder();
   switchTab('song-' + id);
-  saveToLocalStorage();
 }
 
 function deleteSong(id) {
@@ -2173,7 +2221,6 @@ function deleteSong(id) {
   if (tab)   tab.remove();
   if (panel) panel.remove();
   renderSetOrder();
-  saveToLocalStorage();
   // Switch to settings if no songs left, else first song
   if (songs.length) switchTab('song-' + songs[0].id);
   else switchTab('settings');
@@ -2188,7 +2235,6 @@ function renameSong(id, name) {
   // Update title inside panel if currently shown
   const titleEl = document.getElementById('song-title-' + id);
   if (titleEl) titleEl.value = name;
-  saveToLocalStorage();
 }
 
 function moveSong(id, dir) {
@@ -2205,10 +2251,25 @@ function moveSong(id, dir) {
     if (t) tabsEl.appendChild(t);
   });
   renderSetOrder();
-  saveToLocalStorage();
+  // Refresh nav bars on all song panels
+  songs.forEach(s => refreshSongNav(s.id));
 }
 
-
+function refreshSongNav(id) {
+  const panel = document.getElementById('panel-song-' + id);
+  if (!panel) return;
+  const navBar = panel.querySelector('.song-nav-bar');
+  if (!navBar) return;
+  const idx = songs.findIndex(s => s.id === id);
+  const hasPrev = idx > 0, hasNext = idx < songs.length - 1;
+  const prevId = hasPrev ? songs[idx-1].id : null;
+  const nextId = hasNext ? songs[idx+1].id : null;
+  navBar.innerHTML = `
+    <button class="song-nav-btn" ${hasPrev?'':'disabled'} onclick="${hasPrev?`switchTab('song-${prevId}')`:'void 0'}">◀ ${hasPrev?songs[idx-1].name:'–'}</button>
+    <span style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-dim)">${idx+1} of ${songs.length}</span>
+    <button class="song-nav-btn" ${hasNext?'':'disabled'} onclick="${hasNext?`switchTab('song-${nextId}')`:'void 0'}">${hasNext?songs[idx+1].name:'–'} ▶</button>
+  `;
+}
 
 // ── Create DOM elements for a song ───────────────────
 function createSongTab(song) {
@@ -2232,7 +2293,19 @@ function createSongPanel(song) {
 
 function buildSongPanelHTML(song) {
   const st  = song.state;
+  const idx = songs.findIndex(s => s.id === song.id);
+  const hasPrev = idx > 0;
+  const hasNext = idx < songs.length - 1;
+  const prevId  = hasPrev ? songs[idx-1].id : null;
+  const nextId  = hasNext ? songs[idx+1].id : null;
   return `
+    <!-- Song nav -->
+    <div class="song-nav-bar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;padding-bottom:0.75rem;border-bottom:1px solid var(--border)">
+      <button class="song-nav-btn" ${hasPrev?'':'disabled'} onclick="${hasPrev?`switchTab('song-${prevId}')`:'void 0'}">◀ ${hasPrev?songs[idx-1].name:'–'}</button>
+      <span style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-dim)">${idx+1} of ${songs.length}</span>
+      <button class="song-nav-btn" ${hasNext?'':'disabled'} onclick="${hasNext?`switchTab('song-${nextId}')`:'void 0'}">${hasNext?songs[idx+1].name:'–'} ▶</button>
+    </div>
+
     <!-- Song title -->
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;padding-bottom:0.75rem;border-bottom:1px solid var(--border)">
       <input id="song-title-${song.id}" type="text" value="${song.name}"
@@ -2454,8 +2527,6 @@ function buildKeyGridsSong(id) {
           const g = document.getElementById(gid);
           if(g) g.querySelectorAll('.note-mini-btn').forEach(b=>b.classList.toggle('active',b.textContent===n));
         });
-        saveSongState(id);
-        renderSectionListSong(id);
         liveUpdateSong(id);
       };
       rg.appendChild(btn);
@@ -2472,8 +2543,6 @@ function buildKeyGridsSong(id) {
           const g = document.getElementById(gid);
           if(g) g.querySelectorAll('.key-mode-btn').forEach(b=>{ const mm=MODES.find(mm=>mm.label===b.textContent); b.classList.toggle('active',mm&&mm.name===m.name); });
         });
-        saveSongState(id);
-        renderSectionListSong(id);
         liveUpdateSong(id);
       };
       mg.appendChild(btn);
@@ -2499,12 +2568,11 @@ function parseSong(id) {
   renderSectionListSong(id);
   renderKeyDetectionSong(id, candidates.slice(0,3));
   computeKeyMapSong(id);
-  saveToLocalStorage();
 }
 
 function liveUpdateSong(id) {
   const song = songs.find(s => s.id === id);
-  if (song && song.state.mapRendered) { computeKeyMapSong(id); saveToLocalStorage(); }
+  if (song && song.state.mapRendered) computeKeyMapSong(id);
 }
 
 function setNodeDisplaySong(id, btn) {
@@ -2552,14 +2620,7 @@ function renderSectionListSong(id) {
       tog.textContent = sec.active ? 'ON' : 'OFF';
       tog.classList.toggle('dim', !sec.active);
       card.style.opacity = sec.active ? '1' : '0.45';
-      // Update the song state directly since we modified sec.active in-place
-      const song2 = songs.find(s => s.id === id);
-      if (song2) {
-        song2.state.songSections = JSON.parse(JSON.stringify(song.state.songSections));
-        song2.state.soloChord = null;
-        song2.state.soloSection = null;
-      }
-      loadSongState(id); saveSongState(id);
+      loadSongState(id); soloChord = null; soloSection = null; saveSongState(id);
       liveUpdateSong(id);
     };
     card.appendChild(tog);
@@ -2571,17 +2632,9 @@ function renderSectionListSong(id) {
     soloBtn.onclick = e => {
       e.stopPropagation();
       loadSongState(id);
-      if (soloSection === si) {
-        soloSection = null;
-        soloBtn.classList.remove('active');
-      } else {
-        soloSection = si;
-        soloChord = null;
-        document.querySelectorAll(`#section-list-${id} .section-solo-btn`).forEach(b=>b.classList.remove('active'));
-        soloBtn.classList.add('active');
-      }
-      saveSongState(id);
-      liveUpdateSong(id);
+      if (soloSection === si) { soloSection = null; soloBtn.classList.remove('active'); }
+      else { soloSection = si; soloChord = null; document.querySelectorAll(`#section-list-${id} .section-solo-btn`).forEach(b=>b.classList.remove('active')); soloBtn.classList.add('active'); }
+      saveSongState(id); liveUpdateSong(id);
     };
     card.appendChild(soloBtn);
 
@@ -2727,7 +2780,6 @@ function updateSetName(val) {
   const el = document.getElementById('header-title');
   if (el) el.textContent = val || 'Steel Note Finder';
   document.title = val || 'Steel Note Finder';
-  saveToLocalStorage();
 }
 
 
@@ -2963,85 +3015,10 @@ function importSet() {
   if (songs.length) switchTab('song-' + songs[0].id);
 }
 
-// ═══════════════════════════════════════════════════════
-//  LOCAL STORAGE — auto-save & restore
-// ═══════════════════════════════════════════════════════
-const LS_KEY = 'steel-note-finder-set';
-
-function saveToLocalStorage() {
-  if (activeSongId !== null) saveSongState(activeSongId);
-  try {
-    const snapshot = {
-      v: 1,
-      setName,
-      nextId,
-      songs: songs.map(s => ({
-        id:   s.id,
-        name: s.name,
-        state: {
-          chartText:    s.state.chartText || '',
-          keyRoot:      s.state.keyRoot,
-          keyMode:      s.state.keyMode,
-          keyOverride:  s.state.keyOverride,
-          nodeDisplay:  s.state.nodeDisplay,
-          fbdNoteMode:  s.state.fbdNoteMode,
-          songSections: s.state.songSections,
-          detectedKey:  s.state.detectedKey,
-        }
-      }))
-    };
-    localStorage.setItem(LS_KEY, JSON.stringify(snapshot));
-  } catch(e) {
-    console.warn('Could not save to localStorage:', e);
-  }
-}
-
-function loadFromLocalStorage() {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return false;
-    const snapshot = JSON.parse(raw);
-    if (!snapshot.v || !snapshot.songs) return false;
-
-    setName = snapshot.setName || '';
-    nextId  = snapshot.nextId  || 1;
-
-    const inp = document.getElementById('set-name-input');
-    if (inp) inp.value = setName;
-    updateSetName(setName);
-
-    snapshot.songs.forEach(saved => {
-      const song = {
-        id:    saved.id,
-        name:  saved.name,
-        state: { ...defaultSongState(), ...saved.state,
-                 songSections: (saved.state.songSections || []).map(sec => ({
-                   ...sec,
-                   chords: (sec.chords || []).map(ch => typeof ch === 'string' ? {name:ch,active:true} : ch)
-                 }))
-               }
-      };
-      songs.push(song);
-      createSongPanel(song);
-      createSongTab(song);
-    });
-
-    return true;
-  } catch(e) {
-    console.warn('Could not load from localStorage:', e);
-    return false;
-  }
-}
-
 // ── Startup ───────────────────────────────────────────
-const restored = loadFromLocalStorage();
 renderSetOrder();
 renderCopedentTable();
-if (restored && songs.length) {
-  switchTab('song-' + songs[0].id);
-} else {
-  switchTab('settings');
-}
+switchTab('settings');
 </script>
 </body>
 </html>
