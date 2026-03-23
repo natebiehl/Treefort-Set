@@ -644,6 +644,194 @@
   .copedent-table td.has-change { color: var(--teal); font-weight: 600; background: var(--bg2); }
   .copedent-table td.empty { color: var(--text-dim); background: var(--bg); opacity: 0.3; }
 
+  /* ══ PARALLEL LINES MODULE ══ */
+  .pl-module {
+    margin-top: 2rem;
+    border-top: 1px solid var(--border);
+    padding-top: 1.5rem;
+  }
+  .pl-header {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;
+  }
+  .pl-title {
+    font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700;
+    color: var(--teal); letter-spacing: 0.02em;
+  }
+  .pl-subtitle {
+    font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--text-dim); margin-top: 2px;
+  }
+  .pl-controls {
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+    margin-bottom: 1rem;
+  }
+  .pl-interval-group {
+    display: flex; gap: 0;
+    border: 1px solid var(--border2); border-radius: 3px;
+    overflow: hidden;
+  }
+  .pl-interval-btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 7px 13px; background: var(--bg2);
+    border: none; border-right: 1px solid var(--border2);
+    color: var(--text-dim); cursor: pointer; transition: all 0.08s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .pl-interval-btn:last-child { border-right: none; }
+  .pl-interval-btn.active { background: var(--bg3); color: var(--teal); }
+  .pl-interval-btn:hover:not(.active) { color: var(--text); }
+
+  .pl-dir-group {
+    display: flex; gap: 0;
+    border: 1px solid var(--border2); border-radius: 3px; overflow: hidden;
+  }
+  .pl-dir-btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 7px 13px; background: var(--bg2);
+    border: none; border-right: 1px solid var(--border2);
+    color: var(--text-dim); cursor: pointer; transition: all 0.08s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .pl-dir-btn:last-child { border-right: none; }
+  .pl-dir-btn.active { background: var(--bg3); color: var(--gold); }
+  .pl-dir-btn:hover:not(.active) { color: var(--text); }
+
+  .pl-steps-label {
+    font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--text-dim); margin-bottom: 0.75rem; margin-top: 0.25rem;
+  }
+
+  /* Transition block */
+  .pl-transition {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 3px; margin-bottom: 1rem; overflow: hidden;
+  }
+  .pl-transition-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 14px; border-bottom: 1px solid var(--border);
+    background: var(--bg3);
+  }
+  .pl-chord-from {
+    font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700;
+    color: var(--text);
+  }
+  .pl-arrow {
+    font-size: 14px; color: var(--text-dim); flex-shrink: 0;
+  }
+  .pl-chord-to {
+    font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700;
+    color: var(--teal);
+  }
+  .pl-path-count {
+    font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--text-dim); margin-left: auto;
+  }
+  .pl-no-paths {
+    padding: 10px 14px; font-size: 11px; color: var(--text-dim);
+    letter-spacing: 0.08em;
+  }
+
+  /* Path row */
+  .pl-path {
+    padding: 10px 14px; border-bottom: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .pl-path:last-child { border-bottom: none; }
+  .pl-path-header {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .pl-path-rank {
+    font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--text-dim); min-width: 24px;
+  }
+  .pl-path-interval-badge {
+    font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600;
+    padding: 2px 7px; border-radius: 20px; letter-spacing: 0.06em;
+    background: var(--teal-dim); color: var(--teal); border: 1px solid var(--teal);
+    flex-shrink: 0;
+  }
+  .pl-path-travel {
+    font-size: 10px; color: var(--text-dim); letter-spacing: 0.06em;
+  }
+
+  /* Step sequence */
+  .pl-steps {
+    display: flex; align-items: stretch; gap: 0; overflow-x: auto;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .pl-steps::-webkit-scrollbar { display: none; }
+
+  .pl-step {
+    flex: 0 0 auto;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 4px; min-width: 80px;
+  }
+  .pl-step-fret {
+    font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800;
+    letter-spacing: 0.02em; line-height: 1;
+  }
+  .pl-step-fret.takeoff { color: var(--text-mid); }
+  .pl-step-fret.walking { color: var(--text-dim); }
+  .pl-step-fret.landing { color: var(--teal); }
+
+  .pl-step-notes {
+    display: flex; flex-direction: column; gap: 3px; width: 100%;
+  }
+  .pl-note-row {
+    display: flex; align-items: center; gap: 5px;
+    padding: 3px 6px; border-radius: 2px;
+    background: var(--bg3); border: 1px solid var(--border2);
+  }
+  .pl-note-row.is-chord-tone { border-color: var(--border2); }
+  .pl-note-row.is-root { border-color: #e0606066; }
+  .pl-note-name {
+    font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700;
+    min-width: 20px; text-align: center;
+  }
+  .pl-note-string {
+    font-size: 9px; color: var(--text-dim); letter-spacing: 0.08em;
+    flex-shrink: 0;
+  }
+  .pl-note-voicing {
+    font-family: 'IBM Plex Mono', monospace; font-size: 9px; font-weight: 600;
+    margin-left: auto; letter-spacing: 0.04em; flex-shrink: 0;
+  }
+  .pl-step-role {
+    font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--text-dim); text-align: center;
+  }
+  .pl-step-role.takeoff { color: var(--gold); opacity: 0.7; }
+  .pl-step-role.landing { color: var(--teal); }
+
+  /* Arrow connector between steps */
+  .pl-step-connector {
+    flex: 0 0 auto; display: flex; align-items: center;
+    padding: 0 2px; margin-top: 22px;
+    color: var(--text-dim); font-size: 12px;
+  }
+  .pl-step-connector.up   { color: #48c870; }
+  .pl-step-connector.down { color: #c8a84a; }
+
+  .pl-empty {
+    padding: 1.5rem; text-align: center;
+    font-size: 11px; color: var(--text-dim); letter-spacing: 0.1em;
+  }
+
+  .pl-run-btn {
+    font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700;
+    padding: 9px 24px; background: var(--teal-dim);
+    border: 1px solid var(--teal); color: var(--teal);
+    border-radius: 3px; cursor: pointer; letter-spacing: 0.06em;
+    text-transform: uppercase; transition: all 0.1s;
+  }
+  .pl-run-btn:hover { background: #0c3830; color: var(--bright); }
+
+  /* ══ END PARALLEL LINES MODULE ══ */
+
   /* ── Motion toggle ── */
   .motion-toggle {
     display: flex;
@@ -683,7 +871,7 @@
 
 <header>
   <div class="header-title" id="header-title">Steel Note Finder</div>
-  <div class="header-sub">Williams 400 · E9 · Frets 0–12 · v2026-03-22 17:55 MT</div>
+  <div class="header-sub">Williams 400 · E9 · Frets 0–24 · v2026-03-23 02:30 MT</div>
 </header>
 
 <div class="main">
@@ -691,6 +879,7 @@
   <div class="mode-tabs-wrap">
     <div class="mode-tabs" id="main-tabs">
       <button class="mode-tab settings-tab active" onclick="switchTab('settings')" id="tab-settings">⚙ Settings</button>
+      <button class="mode-tab settings-tab" onclick="switchTab('chordlab')" id="tab-chordlab">♫ Chord Lab</button>
       <!-- Song tabs injected here by JS -->
     </div>
   </div>
@@ -744,6 +933,83 @@
 
   <!-- Song panels injected here by JS -->
   <div id="song-panels-container"></div>
+
+  <!-- ══ CHORD LAB PANEL ══ -->
+  <div class="panel" id="panel-chordlab">
+    <div style="margin-bottom:1.25rem;padding-bottom:1rem;border-bottom:1px solid var(--border)">
+      <div style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;color:var(--teal);margin-bottom:4px">Chord Lab</div>
+      <div style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-dim)">Diatonic parallel voice movement · any two chords</div>
+    </div>
+
+    <!-- Key context -->
+    <div class="walk-config" style="margin-bottom:1.25rem">
+      <div class="config-group">
+        <div class="config-label">Key root</div>
+        <div class="note-select-mini" id="cl-key-root-grid"></div>
+      </div>
+      <div class="config-group">
+        <div class="config-label">Mode</div>
+        <div class="key-mode-grid" id="cl-key-mode-grid"></div>
+      </div>
+    </div>
+
+    <!-- Chord inputs -->
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:1.25rem">
+      <div class="config-group" style="flex:1;min-width:140px">
+        <div class="config-label">Chord A (from)</div>
+        <input id="cl-chord-a" type="text" placeholder="e.g. E  or  G#m7"
+          style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;
+                 background:var(--bg2);border:1px solid var(--border2);color:var(--text);
+                 padding:8px 12px;border-radius:3px;outline:none;width:100%;"
+          oninput="clChordAChanged()" />
+        <div id="cl-chord-a-parsed" style="font-size:10px;color:var(--text-dim);margin-top:4px;letter-spacing:0.06em;min-height:14px"></div>
+      </div>
+      <div style="font-size:24px;color:var(--text-dim);padding-bottom:28px;flex-shrink:0">→</div>
+      <div class="config-group" style="flex:1;min-width:140px">
+        <div class="config-label">Chord B (to)</div>
+        <input id="cl-chord-b" type="text" placeholder="e.g. A  or  C#m"
+          style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;
+                 background:var(--bg2);border:1px solid var(--border2);color:var(--text);
+                 padding:8px 12px;border-radius:3px;outline:none;width:100%;"
+          oninput="clChordBChanged()" />
+        <div id="cl-chord-b-parsed" style="font-size:10px;color:var(--text-dim);margin-top:4px;letter-spacing:0.06em;min-height:14px"></div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="pl-controls">
+      <div>
+        <div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-dim);margin-bottom:5px">Interval</div>
+        <div class="pl-interval-group" id="cl-interval-group">
+          <button class="pl-interval-btn" data-semitones="3" onclick="clSetInterval(this)">3rds</button>
+          <button class="pl-interval-btn" data-semitones="5" onclick="clSetInterval(this)">4ths</button>
+          <button class="pl-interval-btn active" data-semitones="8" onclick="clSetInterval(this)">6ths</button>
+          <button class="pl-interval-btn" data-semitones="7" onclick="clSetInterval(this)">5ths</button>
+          <button class="pl-interval-btn" data-semitones="12" onclick="clSetInterval(this)">Oct</button>
+          <button class="pl-interval-btn" data-semitones="2" onclick="clSetInterval(this)">2nds</button>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-dim);margin-bottom:5px">Direction</div>
+        <div class="pl-dir-group" id="cl-dir-group">
+          <button class="pl-dir-btn active" data-dir="both" onclick="clSetDir(this)">Both</button>
+          <button class="pl-dir-btn" data-dir="up" onclick="clSetDir(this)">↑ Up</button>
+          <button class="pl-dir-btn" data-dir="down" onclick="clSetDir(this)">↓ Down</button>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-dim);margin-bottom:5px">Walk steps</div>
+        <div class="pl-interval-group" id="cl-steps-group">
+          <button class="pl-interval-btn" data-steps="3" onclick="clSetSteps(this)">3</button>
+          <button class="pl-interval-btn active" data-steps="5" onclick="clSetSteps(this)">5</button>
+          <button class="pl-interval-btn" data-steps="7" onclick="clSetSteps(this)">7</button>
+        </div>
+      </div>
+    </div>
+
+    <button class="pl-run-btn" onclick="runChordLab()" style="margin-bottom:1.25rem">▶ Find Paths</button>
+    <div id="cl-results"><div class="pl-empty">Enter two chords and tap Find Paths</div></div>
+  </div>
 
 </div>
 
@@ -806,6 +1072,29 @@ function harmonizeNote(melodyNote, scale, intervalDegrees) {
 //  E9 PEDAL STEEL NECK DATA
 // ═══════════════════════════════════════════════════════
 const openStrings = {1:'F#',2:'D#',3:'G#',4:'E',5:'B',6:'G#',7:'F#',8:'E',9:'D',10:'B'};
+
+// Absolute MIDI pitch for each open string (standard E9 tuning)
+// MIDI middle C = 60 (C4). Values here are approximate consensus tuning.
+const openStringMidi = {
+  1: 78,  // F#4  (high treble)
+  2: 75,  // D#4 / Eb4
+  3: 68,  // G#3 / Ab3
+  4: 64,  // E3  — NOTE: lower than strings 1&2 despite being string 4
+  5: 59,  // B3
+  6: 56,  // G#3 / Ab3  (same pitch class as string 3, one octave lower... actually same octave)
+  7: 54,  // F#3
+  8: 52,  // E3
+  9: 50,  // D3
+  10: 47, // B2  (bass)
+};
+
+// Absolute MIDI pitch of a string at a given fret
+function absPitch(str, fret) { return openStringMidi[str] + fret; }
+
+// Semitone distance in absolute pitch between two strings at a given fret
+function absPitchDist(sA, sB, fret) {
+  return Math.abs(absPitch(sA, fret) - absPitch(sB, fret));
+}
 
 // Changes: {s: semitones, v: voicing/pedal name}
 const stringChanges = {
@@ -1254,20 +1543,37 @@ function extractChords(s) {
 }
 
 // ── Key detection ─────────────────────────────────────
-function detectKey(chordNames) {
+// sectionStarters: optional array of first-chord names from each section
+function detectKey(chordNames, sectionStarters) {
   const parsed = chordNames.map(c=>parseChordName(c)).filter(Boolean);
   if (!parsed.length) return [];
   const rootFreq = {};
   for (const ch of parsed) rootFreq[ch.root] = (rootFreq[ch.root]||0)+1;
+
   const cadenceVotes = {};
   for (let i=0; i<parsed.length-1; i++) {
     const a=parsed[i], b=parsed[i+1];
     const interval=(noteIdx(b.root)-noteIdx(a.root)+12)%12;
+    // V→I: chord moving up a P4 to target
     if (interval===5&&(a.quality==='dom7'||a.quality==='maj'))
       cadenceVotes[b.root]=(cadenceVotes[b.root]||0)+3;
-    if (interval===7&&b.quality==='maj')
-      cadenceVotes[a.root]=(cadenceVotes[a.root]||0)+1;
+    // IV→I plagal: chord moving up a P5 to target (A→E votes for E)
+    if (interval===7&&(b.quality==='maj'||b.quality==='dom7'))
+      cadenceVotes[b.root]=(cadenceVotes[b.root]||0)+1;
+    // I→V: weak tonic signal for a
+    if (interval===7&&a.quality==='maj')
+      cadenceVotes[a.root]=(cadenceVotes[a.root]||0)+0.5;
   }
+
+  // Section-starter bonus: first chord of each section is a strong tonic signal
+  const starterVotes = {};
+  if (sectionStarters) {
+    for (const c of sectionStarters) {
+      const p=parseChordName(c);
+      if (p) starterVotes[p.root]=(starterVotes[p.root]||0)+2;
+    }
+  }
+
   const results=[];
   for (const root of chromatic) {
     const ri=noteIdx(root);
@@ -1278,15 +1584,17 @@ function detectKey(chordNames) {
       for (const ch of parsed) {
         const tones=chordToneNotes(ch.root,ch.quality);
         const pct=tones.filter(t=>scaleNotes.has(t)).length/tones.length;
-        if (pct>=0.75){inKey++;score+=pct*2;}else{score+=pct*0.5;}
+        // Zero score for non-fitting chords — no partial credit that lets wrong keys game the score
+        if (pct>=0.75){inKey++;score+=pct*2;}
       }
       const tonicChords=parsed.filter(ch=>ch.root===root);
-      const tonicIsMajor=tonicChords.some(ch=>['maj','dom7','maj7'].includes(ch.quality));
+      const tonicIsMajor=tonicChords.some(ch=>['maj','dom7','maj7','6'].includes(ch.quality));
       const tonicIsMinor=tonicChords.some(ch=>['min','min7'].includes(ch.quality));
       if (tonicIsMajor&&['Ionian','Mixolydian','Lydian'].includes(mode.name)) score+=2;
       if (tonicIsMinor&&['Aeolian','Dorian','Phrygian'].includes(mode.name)) score+=2;
       score+=(rootFreq[root]||0)*0.8;
       score+=(cadenceVotes[root]||0);
+      score+=(starterVotes[root]||0);
       results.push({root,mode:mode.name,score,coverage:inKey/parsed.length,outChords:[]});
     }
   }
@@ -1936,6 +2244,15 @@ function computeKeyMap(songId, wCov, wEase, wChord) {
   const normed  = scores.map(s=>({...s, norm:s.score/maxSc}));
   const ranked  = [...normed].sort((a,b)=>b.score-a.score).slice(0,5);
 
+  // Store top-2 ranked frets on song state for Position Bridge auto-fill
+  if (songId !== undefined && songId !== null) {
+    const song = songs.find(s => s.id === songId);
+    if (song) {
+      song.state.rankedFrets = ranked.map(r => r.fret);
+      pbAutoFillFrets(songId);
+    }
+  }
+
   // Scale legend — show diatonic chord names (Gmaj → G, Gmin → Gm)
   const noteLegend = scaleArr.map((n, degIdx) => {
     const cls = n===keyRoot?'tone-root':ctSet.has(n)?'tone-chord':'tone-scale';
@@ -2334,7 +2651,13 @@ function buildSongPanelHTML(song) {
         <button class="song-key-override-btn" onclick="toggleKeyOverride(${song.id})">Override</button>
       </div>
       <div id="key-override-panel-${song.id}" style="display:${st.keyOverride?'':'none'}">
-        <div class="walk-config" style="margin-top:0.75rem">
+        <div class="walk-config" style="margin-top:0.75rem;position:relative">
+          <button onclick="closeKeyOverride(${song.id})"
+            style="position:absolute;top:6px;right:6px;font-family:'IBM Plex Mono',monospace;
+                   font-size:13px;line-height:1;padding:3px 8px;border-radius:3px;
+                   border:1px solid var(--border2);background:var(--bg3);
+                   color:var(--text-dim);cursor:pointer;z-index:1"
+            title="Close panel (keep manual key)">✕</button>
           <div class="config-group">
             <div class="config-label">Key root</div>
             <div class="note-select-mini" id="key-root-grid-${song.id}"></div>
@@ -2361,7 +2684,10 @@ function buildSongPanelHTML(song) {
       </div>
     </div>
 
-    <!-- Node display toggle -->
+    <!-- Node display toggle moved below key-result -->
+    <div id="key-result-${song.id}"></div>
+
+    <!-- Node label -->
     <div style="margin:0.75rem 0 1rem">
       <div class="selector-label" style="margin-bottom:8px">Node label</div>
       <div class="node-display-toggle" id="node-display-toggle-${song.id}">
@@ -2373,7 +2699,73 @@ function buildSongPanelHTML(song) {
       </div>
     </div>
 
-    <div id="key-result-${song.id}"></div>
+    <!-- ══ POSITION BRIDGE MODULE ══ -->
+    <div class="pl-module" id="pl-module-${song.id}" style="display:${st.songSections&&st.songSections.length?'':'none'}">
+      <div class="pl-header">
+        <div>
+          <div class="pl-title">Position Bridge</div>
+          <div class="pl-subtitle">Back-calculate diatonic parallel walks to a landing position</div>
+        </div>
+        <button class="pl-run-btn" onclick="runPositionBridge(${song.id})">▶ Find Paths</button>
+      </div>
+
+      <!-- Landing chord + fret -->
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:1rem">
+        <div class="config-group" style="flex:1;min-width:140px">
+          <div class="config-label">Landing chord</div>
+          <select class="config-select" id="pb-chord-b-${song.id}" style="font-size:14px;font-family:'Syne',sans-serif;font-weight:700"></select>
+        </div>
+        <div class="config-group">
+          <div class="config-label">Landing fret</div>
+          <input id="pb-to-fret-${song.id}" type="number" min="0" max="24" value="5"
+            style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--teal);
+                   background:var(--bg2);border:1px solid var(--border2);
+                   padding:6px 10px;border-radius:3px;outline:none;width:72px;text-align:center;" />
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="pl-controls">
+        <div>
+          <div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-dim);margin-bottom:5px">Interval</div>
+          <div class="pl-interval-group" id="pb-interval-${song.id}">
+            <button class="pl-interval-btn" data-semitones="3" onclick="pbSetInterval(${song.id},this)">3rds</button>
+            <button class="pl-interval-btn" data-semitones="5" onclick="pbSetInterval(${song.id},this)">4ths</button>
+            <button class="pl-interval-btn active" data-semitones="8" onclick="pbSetInterval(${song.id},this)">6ths</button>
+            <button class="pl-interval-btn" data-semitones="7" onclick="pbSetInterval(${song.id},this)">5ths</button>
+            <button class="pl-interval-btn" data-semitones="12" onclick="pbSetInterval(${song.id},this)">Oct</button>
+            <button class="pl-interval-btn" data-semitones="2" onclick="pbSetInterval(${song.id},this)">2nds</button>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-dim);margin-bottom:5px">Direction</div>
+          <div class="pl-dir-group" id="pb-dir-${song.id}">
+            <button class="pl-dir-btn active" data-dir="both" onclick="pbSetDir(${song.id},this)">Both</button>
+            <button class="pl-dir-btn" data-dir="up" onclick="pbSetDir(${song.id},this)">↑ Up</button>
+            <button class="pl-dir-btn" data-dir="down" onclick="pbSetDir(${song.id},this)">↓ Down</button>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-dim);margin-bottom:5px">Walk steps</div>
+          <div class="pl-interval-group" id="pb-steps-${song.id}">
+            <button class="pl-interval-btn" data-steps="3" onclick="pbSetSteps(${song.id},this)">3</button>
+            <button class="pl-interval-btn active" data-steps="5" onclick="pbSetSteps(${song.id},this)">5</button>
+            <button class="pl-interval-btn" data-steps="7" onclick="pbSetSteps(${song.id},this)">7</button>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-dim);margin-bottom:5px">Overshoot</div>
+          <div class="pl-interval-group" id="pb-overshoot-${song.id}">
+            <button class="pl-interval-btn active" data-overshoot="0" onclick="pbSetOvershoot(${song.id},this)">Off</button>
+            <button class="pl-interval-btn" data-overshoot="1" onclick="pbSetOvershoot(${song.id},this)">+1 step</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="pb-results-${song.id}">
+        <div class="pl-empty">Select a landing chord and tap Find Paths</div>
+      </div>
+    </div>
 
     <!-- Score weights + voicing -->
     <div class="walk-config" style="margin-top:1.5rem">
@@ -2559,7 +2951,8 @@ function parseSong(id) {
   songSections = parseSongText(text);
   if (!songSections.length) { alert('No chords found — check your format.'); return; }
   const allChords = songSections.flatMap(s => s.chords.map(c => c.name));
-  const candidates = detectKey(allChords);
+  const sectionStarters = songSections.map(s => s.chords[0]?.name).filter(Boolean);
+  const candidates = detectKey(allChords, sectionStarters);
   if (candidates.length) { detectedKey = candidates[0]; keyRoot = detectedKey.root; keyMode = detectedKey.mode; }
   document.getElementById('manual-key-panel-' + id).style.display = 'none';
   document.getElementById('song-sections-' + id).style.display = '';
@@ -2568,11 +2961,14 @@ function parseSong(id) {
   renderSectionListSong(id);
   renderKeyDetectionSong(id, candidates.slice(0,3));
   computeKeyMapSong(id);
+  showParallelModule(id);
 }
 
 function liveUpdateSong(id) {
   const song = songs.find(s => s.id === id);
-  if (song && song.state.mapRendered) computeKeyMapSong(id);
+  if (!song) return;
+  if (song.state.songSections.length) renderSectionListSong(id);
+  if (song.state.mapRendered) computeKeyMapSong(id);
 }
 
 function setNodeDisplaySong(id, btn) {
@@ -2584,14 +2980,33 @@ function setNodeDisplaySong(id, btn) {
   liveUpdateSong(id);
 }
 
+function closeKeyOverride(id) {
+  // Close panel but keep manual key selection active
+  document.getElementById('key-override-panel-' + id).style.display = 'none';
+  const btn = document.querySelector(`#song-key-row-${id} .song-key-override-btn`);
+  if (btn) btn.textContent = 'Override';
+}
+
 function toggleKeyOverride(id) {
   loadSongState(id);
-  keyOverride = !keyOverride;
-  saveSongState(id);
-  document.getElementById('key-override-panel-' + id).style.display = keyOverride ? '' : 'none';
+  const panel = document.getElementById('key-override-panel-' + id);
   const btn = document.querySelector(`#song-key-row-${id} .song-key-override-btn`);
-  if (btn) btn.textContent = keyOverride ? 'Use Detected' : 'Override';
-  if (!keyOverride && detectedKey) { keyRoot = detectedKey.root; keyMode = detectedKey.mode; saveSongState(id); liveUpdateSong(id); }
+  const isOpen = panel.style.display !== 'none';
+  if (isOpen) {
+    // "Use Detected" — revert to auto key and close
+    keyOverride = false;
+    if (detectedKey) { keyRoot = detectedKey.root; keyMode = detectedKey.mode; }
+    panel.style.display = 'none';
+    if (btn) btn.textContent = 'Override';
+    saveSongState(id);
+    liveUpdateSong(id);
+  } else {
+    // "Override" — open panel
+    keyOverride = true;
+    panel.style.display = '';
+    if (btn) btn.textContent = 'Use Detected';
+    saveSongState(id);
+  }
 }
 
 function renderSectionListSong(id) {
@@ -2762,6 +3177,8 @@ function switchTab(name) {
   if (name === 'settings') {
     renderSetOrder();
     renderCopedentTable();
+    activeSongId = null;
+  } else if (name === 'chordlab') {
     activeSongId = null;
   } else if (name.startsWith('song-')) {
     const id = parseInt(name.replace('song-',''));
@@ -3015,9 +3432,614 @@ function importSet() {
   if (songs.length) switchTab('song-' + songs[0].id);
 }
 
+// ═══════════════════════════════════════════════════════
+//  SHARED PARALLEL MOTION ENGINE
+// ═══════════════════════════════════════════════════════
+
+// Get interval class name
+function intervalName(semitones) {
+  const names = {1:'min 2nd',2:'maj 2nd',3:'min 3rd',4:'maj 3rd',5:'P4',
+                 6:'tritone',7:'P5',8:'min 6th',9:'maj 6th',10:'min 7th',11:'maj 7th',12:'Octave'};
+  return names[semitones] || `${semitones}st`;
+}
+
+// Walk one voice diatonically for N steps
+function diatonicWalk(startNote, scale, numSteps, direction) {
+  const idx0 = scale.indexOf(startNote);
+  if (idx0 === -1) return null;
+  const path = [startNote];
+  let idx = idx0;
+  for (let i = 0; i < numSteps - 1; i++) {
+    idx = direction === 'up'
+      ? (idx + 1) % scale.length
+      : (idx - 1 + scale.length) % scale.length;
+    path.push(scale[idx]);
+  }
+  return path;
+}
+
+// All positions for a note at a fret with allowed voicings
+function notePositionsAtFret(note, fret, allowedVoicings) {
+  const positions = [];
+  for (let s = 1; s <= 10; s++) {
+    const base = shiftNote(openStrings[s], fret);
+    if (base === note && allowedVoicings.has('open'))
+      positions.push({ string: s, voicing: 'open', fret });
+    for (const ch of stringChanges[s]) {
+      if (!allowedVoicings.has(ch.v)) continue;
+      if (shiftNote(base, ch.s) === note)
+        positions.push({ string: s, voicing: ch.v, fret });
+    }
+  }
+  return positions;
+}
+
+// Best 2-note voicing for (noteA, noteB) at a specific fret
+function bestTwoNoteVoicing(noteA, noteB, fret, allowedVoicings) {
+  const posA = notePositionsAtFret(noteA, fret, allowedVoicings);
+  const posB = notePositionsAtFret(noteB, fret, allowedVoicings);
+  let best = null, bestCost = Infinity;
+  for (const pA of posA) {
+    for (const pB of posB) {
+      if (pA.string === pB.string) continue;
+      if (!isCompatible(pA.voicing, pB.voicing)) continue;
+      const cost = (VOICING_COST[pA.voicing]||0) + (VOICING_COST[pB.voicing]||0);
+      if (cost < bestCost) { bestCost = cost; best = { fret, noteA, noteB, stringA: pA.string, voicingA: pA.voicing, stringB: pB.string, voicingB: pB.voicing, cost }; }
+    }
+  }
+  return best;
+}
+
+// Best 2-note voicing for (noteA, noteB) across a range of frets [minFret, maxFret]
+function bestTwoNoteVoicingInRange(noteA, noteB, minFret, maxFret, allowedVoicings, preferFret) {
+  let best = null, bestScore = Infinity;
+  for (let f = Math.max(0, minFret); f <= Math.min(12, maxFret); f++) {
+    const v = bestTwoNoteVoicing(noteA, noteB, f, allowedVoicings);
+    if (!v) continue;
+    const travelPenalty = preferFret !== null ? Math.abs(f - preferFret) * 0.5 : 0;
+    const score = v.cost + travelPenalty;
+    if (score < bestScore) { bestScore = score; best = v; }
+  }
+  return best;
+}
+
+// Derive the best scale mode from a chord quality for Position Bridge
+function modeForChordQuality(quality) {
+  if (['dom7','9','sus4'].includes(quality))               return 'Mixolydian';
+  if (['min','min7','min9','min6'].includes(quality))      return 'Dorian';
+  if (['dim','dim7'].includes(quality))                    return 'Locrian';
+  if (['maj7','maj9'].includes(quality))                   return 'Ionian';
+  return 'Ionian'; // maj, 6, aug, sus2, fallback
+}
+
+// Core path finder — works BACKWARDS from landing
+// Uses the song's key scale for the diatonic walk (not the landing chord's own scale)
+function findBridgePaths(chordTo, keyRoot, keyModeName,
+                         intervalSemitones, direction, numSteps,
+                         toLandFret, allowedVoicings, overshoot) {
+  const landMode = MODES.find(m => m.name === keyModeName) || MODES[0];
+  const landRi   = noteIdx(keyRoot);
+  const scale    = landMode.intervals.map(s => chromatic[(landRi + s) % 12]);
+  const tonesTo  = new Set(chordToneNotes(chordTo.root, chordTo.quality));
+
+  const dirs  = direction === 'both' ? ['up', 'down'] : [direction];
+  const paths = [];
+  const seen  = new Set();
+
+  // Helper: get best voicing for a note on a string at a fret
+  function voicingFor(targetNote, str, fret) {
+    const base = shiftNote(openStrings[str], fret);
+    const opts = [];
+    if (base === targetNote && allowedVoicings.has('open'))
+      opts.push({ voicing: 'open', cost: 0 });
+    for (const ch of stringChanges[str]) {
+      if (!allowedVoicings.has(ch.v)) continue;
+      if (shiftNote(base, ch.s) === targetNote)
+        opts.push({ voicing: ch.v, cost: VOICING_COST[ch.v] || 0 });
+    }
+    if (!opts.length) return null;
+    return opts.sort((a, b) => a.cost - b.cost)[0];
+  }
+
+  for (const dir of dirs) {
+    // Reverse direction for backward walk
+    const revDir = dir === 'up' ? 'down' : 'up';
+
+    // For each pair of chord tones of chordTo that are ~intervalSemitones apart
+    // and both reachable on some string pair at toLandFret
+    for (const landA of scale) {
+      if (!tonesTo.has(landA)) continue;
+      for (const landB of scale) {
+        if (landB === landA || !tonesTo.has(landB)) continue;
+        const rawDist = (noteIdx(landB) - noteIdx(landA) + 12) % 12;
+        if (Math.abs(rawDist - intervalSemitones) > 1 &&
+            Math.abs((12 - rawDist) - intervalSemitones) > 1) continue;
+
+        // Build the full note sequence by walking BACKWARDS from the landing
+        // The landing is the last step. With overshoot, we insert an extra step
+        // one degree past the landing just before it, then land.
+        //
+        // walkA/walkB: full sequence of notes from takeoff → ... → landing
+        // We build them by walking backward from landing for (numSteps-1) steps,
+        // then reversing. With overshoot, we walk back (numSteps-2) steps,
+        // add the overshoot note, then the landing note.
+
+        const stepsBack = overshoot ? numSteps - 1 : numSteps;
+        const backA = diatonicWalk(landA, scale, stepsBack, revDir);
+        const backB = diatonicWalk(landB, scale, stepsBack, revDir);
+        if (!backA || !backB) continue;
+
+        // Reverse: now walkA[0] = takeoff, walkA[last] = landA
+        const walkA = [...backA].reverse();
+        const walkB = [...backB].reverse();
+
+        if (overshoot) {
+          // Insert overshoot: one step past landing in walk direction, then landing
+          const overshootA = diatonicWalk(landA, scale, 2, dir);
+          const overshootB = diatonicWalk(landB, scale, 2, dir);
+          if (!overshootA || !overshootB) continue;
+          // walkA currently ends on landA — replace with [overshoot, land]
+          walkA[walkA.length - 1] = overshootA[1];
+          walkB[walkB.length - 1] = overshootB[1];
+          walkA.push(landA);
+          walkB.push(landB);
+        }
+
+        const noteKey = walkA.join(',') + '|' + walkB.join(',') + '|' + dir;
+        if (seen.has(noteKey)) continue;
+        seen.add(noteKey);
+
+        // Try every string pair
+        for (let sA = 1; sA <= 10; sA++) {
+          for (let sB = 1; sB <= 10; sB++) {
+            if (sA === sB) continue;
+            // Reject pairs more than 12 semitones apart in absolute pitch at the landing fret
+            if (absPitchDist(sA, sB, toLandFret) > 12) continue;
+
+            // Landing step must be exactly toLandFret
+            const vLandA = voicingFor(landA, sA, toLandFret);
+            const vLandB = voicingFor(landB, sB, toLandFret);
+            if (!vLandA || !vLandB) continue;
+            if (!isCompatible(vLandA.voicing, vLandB.voicing)) continue;
+
+            // Build all steps, enforcing monotonic fret movement
+            // For overshoot paths: all steps up to (and including) overshoot are monotonic,
+            // then the final landing step resolves one fret back.
+            const steps = [];
+            let valid = true;
+
+            for (let si = 0; si < walkA.length; si++) {
+              const nA = walkA[si], nB = walkB[si];
+              const isLanding = si === walkA.length - 1;
+              const isOvershoot = overshoot && si === walkA.length - 2;
+
+              let fretMin = 1, fretMax = 12;
+              const prevFret = steps.length > 0 ? steps[steps.length - 1].fret : null;
+
+              if (isLanding) {
+                // Must land exactly here
+                fretMin = toLandFret; fretMax = toLandFret;
+              } else if (isOvershoot) {
+                // Overshoot: must be past landing in walk direction
+                if (dir === 'up') {
+                  fretMin = toLandFret + 1; fretMax = 12;
+                } else {
+                  fretMin = 0; fretMax = Math.max(0, toLandFret - 1);
+                }
+                // Also monotonic from previous
+                if (prevFret !== null) {
+                  if (dir === 'up') fretMin = Math.max(fretMin, prevFret);
+                  else fretMax = Math.min(fretMax, prevFret);
+                }
+              } else {
+                // Normal walk step: monotonic AND strictly advancing (no same-fret repeats)
+                if (prevFret !== null) {
+                  if (dir === 'up') fretMin = prevFret + 1;  // must go higher
+                  else fretMax = prevFret - 1;               // must go lower
+                }
+                // Must stop at or before the landing fret
+                if (dir === 'up') fretMax = Math.min(fretMax, toLandFret);
+                else fretMin = Math.max(fretMin, toLandFret);
+              }
+
+              fretMin = Math.max(1, fretMin);  // never start or walk through open position
+              fretMax = Math.min(24, fretMax);
+              if (fretMin > fretMax) { valid = false; break; }
+
+              // Find best fret in range where both strings hit their notes
+              let bestFret = null, bestCost = Infinity;
+              for (let f = fretMin; f <= fretMax; f++) {
+                const vA = voicingFor(nA, sA, f);
+                const vB = voicingFor(nB, sB, f);
+                if (!vA || !vB || !isCompatible(vA.voicing, vB.voicing)) continue;
+                const cost = vA.cost + vB.cost;
+                if (cost < bestCost) { bestCost = cost; bestFret = f; }
+              }
+
+              if (bestFret === null) { valid = false; break; }
+
+              const vA = voicingFor(nA, sA, bestFret);
+              const vB = voicingFor(nB, sB, bestFret);
+              const role = si === 0 ? 'takeoff'
+                         : isLanding ? 'landing'
+                         : isOvershoot ? 'overshoot'
+                         : 'walking';
+              steps.push({ fret: bestFret, noteA: nA, noteB: nB,
+                           stringA: sA, voicingA: vA.voicing,
+                           stringB: sB, voicingB: vB.voicing,
+                           cost: bestCost, role });
+            }
+
+            if (!valid) continue;
+
+            // Only reject if the final two steps have identical note pairs
+            const last = steps[steps.length - 1];
+            const prev = steps[steps.length - 2];
+            if (prev && last.noteA === prev.noteA && last.noteB === prev.noteB) continue;
+
+            const totalTravel = steps.reduce((sum, s, i) =>
+              i === 0 ? 0 : sum + Math.abs(s.fret - steps[i-1].fret), 0);
+
+            const voicingChanges = steps.reduce((sum, s, i) => {
+              if (i === 0) return 0;
+              return sum + (s.voicingA !== steps[i-1].voicingA ? 1 : 0)
+                         + (s.voicingB !== steps[i-1].voicingB ? 1 : 0);
+            }, 0);
+
+            paths.push({ key: noteKey + `|S${sA}-S${sB}`, dir, walkA, walkB,
+              steps, totalTravel, voicingChanges,
+              stringPair: [sA, sB],
+              intervalActual: rawDist });
+          }
+        }
+      }
+    }
+  }
+
+  paths.sort((a, b) =>
+    (a.voicingChanges * 2 + a.totalTravel + a.steps.reduce((s,st)=>s+st.cost,0) * 0.3) -
+    (b.voicingChanges * 2 + b.totalTravel + b.steps.reduce((s,st)=>s+st.cost,0) * 0.3)
+  );
+
+  // Keep best path per string pair
+  const byPair = {};
+  for (const p of paths) {
+    const k = `${p.stringPair[0]}-${p.stringPair[1]}|${p.dir}|${p.walkA[0]},${p.walkB[0]}`;
+    if (!byPair[k]) byPair[k] = p;
+  }
+  return Object.values(byPair).slice(0, 6);
+}
+
+// ── Shared rendering ───────────────────────────────────
+
+function plStepHTML(step, tonesFrom, tonesTo) {
+  const isFirst     = step.role === 'takeoff';
+  const isLanding   = step.role === 'landing';
+  const isOvershoot = step.role === 'overshoot';
+  const fretCol     = isFirst ? 'var(--gold)'
+                    : isLanding ? 'var(--teal)'
+                    : isOvershoot ? '#d84848'
+                    : 'var(--text-dim)';
+  const roleLabel   = isFirst ? 'Start'
+                    : isLanding ? 'Land'
+                    : isOvershoot ? 'Over'
+                    : '·';
+
+  function noteRow(note, str, voicing, tones) {
+    const vLabel = voicing === 'open' ? '·' : voicing;
+    const vCol   = COLORS[voicing] || '#888';
+    const nCol   = (tones && tones.has(note)) ? (note === [...tones][0] ? '#e06060' : 'var(--text)') : 'var(--text-mid)';
+    return `<div class="pl-note-row">
+      <span style="font-size:13px;font-weight:700;color:var(--text);min-width:24px;font-family:'IBM Plex Mono',monospace">S${str}</span>
+      <span style="font-size:13px;font-weight:700;color:${vCol};font-family:'IBM Plex Mono',monospace;min-width:28px">${vLabel}</span>
+      <span style="color:${nCol};font-size:9px;font-weight:400;font-family:'IBM Plex Mono',monospace;margin-left:2px">${note}</span>
+    </div>`;
+  }
+
+  const tones = isFirst ? tonesFrom : isLanding ? tonesTo : null;
+  return `<div class="pl-step">
+    <div class="pl-step-fret" style="color:${fretCol}${isOvershoot?';text-decoration:line-through;opacity:0.7':''}">F${step.fret}</div>
+    <div class="pl-step-notes">
+      ${noteRow(step.noteA, step.stringA, step.voicingA, tones)}
+      ${noteRow(step.noteB, step.stringB, step.voicingB, tones)}
+    </div>
+    <div class="pl-step-role" style="color:${fretCol};opacity:${isFirst||isLanding||isOvershoot?1:0.5}">${roleLabel}</div>
+  </div>`;
+}
+
+function plPathHTML(path, pathIdx, tonesFrom, tonesTo) {
+  const intName   = intervalName(path.intervalActual);
+  const dirSymbol = path.dir === 'up' ? '↑' : '↓';
+  const spLabel   = path.stringPair ? `S${path.stringPair[0]} · S${path.stringPair[1]}` : '';
+
+  const stepParts = [];
+  path.steps.forEach((step, si) => {
+    stepParts.push(plStepHTML(step, tonesFrom, tonesTo));
+    if (si < path.steps.length - 1) {
+      const next = path.steps[si + 1];
+      const col = path.dir === 'up' ? '#48c870' : '#c8a84a';
+      // Show voicing change indicators between steps
+      const vcA = next.voicingA !== step.voicingA;
+      const vcB = next.voicingB !== step.voicingB;
+      const vcLabelA = vcA ? (next.voicingA === 'open' ? '−' + step.voicingA : (step.voicingA === 'open' ? '+' : '') + next.voicingA) : '';
+      const vcLabelB = vcB ? (next.voicingB === 'open' ? '−' + step.voicingB : (step.voicingB === 'open' ? '+' : '') + next.voicingB) : '';
+      const vcText   = [vcLabelA, vcLabelB].filter(Boolean).join(' ');
+      const changeHint = vcText
+        ? `<div style="font-size:8px;color:${col};letter-spacing:0.06em;text-align:center;margin-top:2px">${vcText}</div>`
+        : '';
+      stepParts.push(`<div class="pl-step-connector" style="color:${col};display:flex;flex-direction:column;align-items:center">›${changeHint}</div>`);
+    }
+  });
+
+  return `<div class="pl-path">
+    <div class="pl-path-header">
+      <span class="pl-path-rank">#${pathIdx+1}</span>
+      <span class="pl-path-interval-badge">${dirSymbol} ${intName}</span>
+      ${spLabel ? `<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:var(--gold);padding:2px 7px;border-radius:20px;border:1px solid var(--gold-dim);background:var(--bg3)">${spLabel}</span>` : ''}
+      <span class="pl-path-travel">${path.totalTravel} fret travel</span>
+    </div>
+    <div class="pl-steps">${stepParts.join('')}</div>
+  </div>`;
+}
+
+function plTransitionHTML(fromName, toName, romanFrom, romanTo, paths, tonesFrom, tonesTo) {
+  let html = `<div class="pl-transition">
+    <div class="pl-transition-header">
+      <span class="pl-chord-from">${fromName} <span style="font-size:11px;color:var(--text-dim);font-family:'IBM Plex Mono',monospace">${romanFrom}</span></span>
+      <span class="pl-arrow">→</span>
+      <span class="pl-chord-to">${toName} <span style="font-size:11px;color:var(--teal-dim);font-family:'IBM Plex Mono',monospace">${romanTo}</span></span>
+      <span class="pl-path-count">${paths.length} path${paths.length!==1?'s':''}</span>
+    </div>`;
+  if (!paths.length) {
+    html += `<div class="pl-no-paths">No clean parallel paths found — try a different interval, direction, or check the fret range.</div>`;
+  } else {
+    paths.forEach((p, pi) => { html += plPathHTML(p, pi, tonesFrom, tonesTo); });
+  }
+  return html + `</div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  POSITION BRIDGE (per-song)
+// ═══════════════════════════════════════════════════════
+
+const pbSettings = {}; // songId → {intervalSemitones, dir, steps, overshoot}
+function pbGetSettings(id) {
+  if (!pbSettings[id]) pbSettings[id] = { intervalSemitones: 8, dir: 'both', steps: 5, overshoot: false };
+  return pbSettings[id];
+}
+function pbSetInterval(id, btn) {
+  document.querySelectorAll(`#pb-interval-${id} .pl-interval-btn`).forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  pbGetSettings(id).intervalSemitones = parseInt(btn.dataset.semitones);
+}
+function pbSetDir(id, btn) {
+  document.querySelectorAll(`#pb-dir-${id} .pl-dir-btn`).forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  pbGetSettings(id).dir = btn.dataset.dir;
+}
+function pbSetSteps(id, btn) {
+  document.querySelectorAll(`#pb-steps-${id} .pl-interval-btn`).forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  pbGetSettings(id).steps = parseInt(btn.dataset.steps);
+}
+function pbSetOvershoot(id, btn) {
+  document.querySelectorAll(`#pb-overshoot-${id} .pl-interval-btn`).forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  pbGetSettings(id).overshoot = parseInt(btn.dataset.overshoot) === 1;
+}
+
+// Populate landing chord dropdown from song sections
+function pbPopulateChords(id) {
+  const song = songs.find(s => s.id === id);
+  if (!song) return;
+  const selB = document.getElementById('pb-chord-b-' + id);
+  if (!selB) return;
+
+  const seen = new Set(), chords = [];
+  for (const sec of song.state.songSections) {
+    if (!sec.active) continue;
+    for (const ch of sec.chords) {
+      if (ch.active && !seen.has(ch.name) && parseChordName(ch.name)) {
+        seen.add(ch.name); chords.push(ch.name);
+      }
+    }
+  }
+  selB.innerHTML = chords.map((c, i) => `<option value="${c}" ${i===0?'selected':''}>${c}</option>`).join('');
+}
+
+// Auto-fill landing fret from #1 ranked position
+function pbAutoFillFrets(id) {
+  const song = songs.find(s => s.id === id);
+  if (!song || !song.state.rankedFrets || !song.state.rankedFrets.length) return;
+  const inp = document.getElementById('pb-to-fret-' + id);
+  if (inp) inp.value = song.state.rankedFrets[0];
+}
+
+function runPositionBridge(id) {
+  const song = songs.find(s => s.id === id);
+  if (!song) return;
+  loadSongState(id);
+
+  const container = document.getElementById('pb-results-' + id);
+  if (!container) return;
+
+  const toChordName = document.getElementById('pb-chord-b-' + id)?.value;
+  const toLandFret  = parseInt(document.getElementById('pb-to-fret-' + id)?.value || 5);
+
+  if (!toChordName) {
+    container.innerHTML = '<div class="pl-empty">Select a landing chord first.</div>';
+    return;
+  }
+
+  const toP = parseChordName(toChordName);
+  if (!toP) {
+    container.innerHTML = '<div class="pl-empty">Could not parse chord name.</div>';
+    return;
+  }
+
+  const { intervalSemitones, dir, steps: numSteps, overshoot } = pbGetSettings(id);
+
+  const paths = findBridgePaths(
+    toP, keyRoot, keyMode,
+    intervalSemitones, dir, numSteps,
+    toLandFret, keyVoicings, overshoot
+  );
+
+  const tonesTo  = new Set(chordToneNotes(toP.root, toP.quality));
+  const modeObj  = MODES.find(m => m.name === keyMode) || MODES[0];
+  const romanTo  = romanNumeral(toP.root, toP.quality, keyRoot, modeObj.intervals);
+
+  let html = `<div class="pl-transition">
+    <div class="pl-transition-header">
+      <span class="pl-arrow" style="color:var(--text-dim)">→ landing on</span>
+      <span class="pl-chord-to">${toChordName} <span style="font-size:11px;color:var(--teal-dim);font-family:'IBM Plex Mono',monospace">${romanTo}</span></span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-dim)">fret ${toLandFret}</span>
+      <span class="pl-path-count">${paths.length} path${paths.length!==1?'s':''}</span>
+    </div>`;
+
+  if (!paths.length) {
+    html += `<div class="pl-no-paths">No paths found — try a different interval, more steps, or check the landing fret.</div>`;
+  } else {
+    paths.forEach((p, pi) => { html += plPathHTML(p, pi, null, tonesTo); });
+  }
+  container.innerHTML = html + `</div>`;
+}
+
+function showParallelModule(id) {
+  const mod = document.getElementById('pl-module-' + id);
+  if (mod) mod.style.display = '';
+  pbPopulateChords(id);
+  pbAutoFillFrets(id);
+}
+
+// ═══════════════════════════════════════════════════════
+//  CHORD LAB (global tab)
+// ═══════════════════════════════════════════════════════
+
+let clState = { keyRoot: 'E', keyMode: 'Mixolydian', intervalSemitones: 8, dir: 'both', steps: 5 };
+
+function clSetInterval(btn) {
+  document.querySelectorAll('#cl-interval-group .pl-interval-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  clState.intervalSemitones = parseInt(btn.dataset.semitones);
+}
+function clSetDir(btn) {
+  document.querySelectorAll('#cl-dir-group .pl-dir-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  clState.dir = btn.dataset.dir;
+}
+function clSetSteps(btn) {
+  document.querySelectorAll('#cl-steps-group .pl-interval-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  clState.steps = parseInt(btn.dataset.steps);
+}
+
+function clChordAChanged() {
+  const inp = document.getElementById('cl-chord-a');
+  const out = document.getElementById('cl-chord-a-parsed');
+  if (!inp || !out) return;
+  const p = parseChordName(inp.value);
+  out.textContent = p ? `${p.root} ${p.quality}` : inp.value.length > 0 ? '? unrecognized' : '';
+  out.style.color = p ? 'var(--teal)' : '#e06060';
+}
+function clChordBChanged() {
+  const inp = document.getElementById('cl-chord-b');
+  const out = document.getElementById('cl-chord-b-parsed');
+  if (!inp || !out) return;
+  const p = parseChordName(inp.value);
+  out.textContent = p ? `${p.root} ${p.quality}` : inp.value.length > 0 ? '? unrecognized' : '';
+  out.style.color = p ? 'var(--teal)' : '#e06060';
+}
+
+function clInitKeyGrids() {
+  const rg = document.getElementById('cl-key-root-grid');
+  const mg = document.getElementById('cl-key-mode-grid');
+  if (!rg || !mg) return;
+
+  chromatic.forEach(n => {
+    const btn = document.createElement('button');
+    btn.className = 'note-mini-btn' + (n === clState.keyRoot ? ' active' : '');
+    btn.textContent = n;
+    btn.onclick = () => {
+      clState.keyRoot = n;
+      rg.querySelectorAll('.note-mini-btn').forEach(b => b.classList.toggle('active', b.textContent === n));
+    };
+    rg.appendChild(btn);
+  });
+
+  MODES.forEach(m => {
+    const btn = document.createElement('button');
+    btn.className = 'key-mode-btn' + (m.name === clState.keyMode ? ' active' : '');
+    btn.textContent = m.label;
+    btn.onclick = () => {
+      clState.keyMode = m.name;
+      mg.querySelectorAll('.key-mode-btn').forEach(b => {
+        const mm = MODES.find(mm => mm.label === b.textContent);
+        b.classList.toggle('active', mm && mm.name === m.name);
+      });
+    };
+    mg.appendChild(btn);
+  });
+}
+
+function runChordLab() {
+  const container = document.getElementById('cl-results');
+  if (!container) return;
+
+  const aVal = document.getElementById('cl-chord-a')?.value?.trim();
+  const bVal = document.getElementById('cl-chord-b')?.value?.trim();
+  if (!aVal || !bVal) {
+    container.innerHTML = '<div class="pl-empty">Enter both chords first.</div>';
+    return;
+  }
+
+  const fromP = parseChordName(aVal);
+  const toP   = parseChordName(bVal);
+  if (!fromP || !toP) {
+    container.innerHTML = '<div class="pl-empty">Could not parse one or both chords — check spelling.</div>';
+    return;
+  }
+
+  const { intervalSemitones, dir, steps: numSteps } = clState;
+
+  // In Chord Lab, fromFret range = whole neck (0–12), landing = whole neck too
+  // We find the best landing fret automatically (lowest cost at any fret)
+  // Actually: find best landing among all frets, then run bridgePaths with that exact fret
+  // Simpler: just run with fromFret 0-12, toLandFret = best fret for chordTo tones
+  const tonesTo = new Set(chordToneNotes(toP.root, toP.quality));
+
+  // Find the fret where chordTo has the most chord tones reachable
+  let bestLandFret = 0, bestLandCount = -1;
+  const allVoicings = new Set(VOICING_ORDER);
+  for (let f = 0; f <= 12; f++) {
+    let count = 0;
+    for (let s = 1; s <= 10; s++) {
+      for (const e of NECK_MAP[f][s]) {
+        if (tonesTo.has(e.note)) { count++; break; }
+      }
+    }
+    if (count > bestLandCount) { bestLandCount = count; bestLandFret = f; }
+  }
+
+  const paths = findBridgePaths(
+    toP, clState.keyRoot, clState.keyMode,
+    intervalSemitones, dir, numSteps,
+    bestLandFret, allVoicings, false
+  );
+
+  const tonesFrom = new Set(chordToneNotes(fromP.root, fromP.quality));
+  const modeObj   = MODES.find(m => m.name === clState.keyMode) || MODES[0];
+  const ri        = noteIdx(clState.keyRoot);
+  const romanFrom = romanNumeral(fromP.root, fromP.quality, clState.keyRoot, modeObj.intervals);
+  const romanTo   = romanNumeral(toP.root,   toP.quality,   clState.keyRoot, modeObj.intervals);
+
+  container.innerHTML = plTransitionHTML(aVal, bVal, romanFrom, romanTo, paths, tonesFrom, tonesTo);
+}
+
 // ── Startup ───────────────────────────────────────────
 renderSetOrder();
 renderCopedentTable();
+clInitKeyGrids();
 switchTab('settings');
 </script>
 </body>
