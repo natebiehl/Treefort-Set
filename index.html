@@ -870,8 +870,8 @@
 <body>
 
 <header>
-  <div class="header-title" id="header-title">Steel Note Finder</div>
-  <div class="header-sub">Williams 400 · E9 · Frets 0–12 · v2026-03-22 21:05 MT</div>
+  <div class="header-title" id="header-title">Interactive Charts</div>
+  <div class="header-sub">Williams 400 · E9 · Frets 0–12 · v2026-03-23 MT</div>
 </header>
 
 <div class="main">
@@ -3722,6 +3722,36 @@ function findBridgePaths(chordTo, keyRoot, keyModeName,
 
 // ── Mini neck SVG renderer ─────────────────────────────
 
+// Infer implied chord name from two notes (best-fit from common qualities)
+function impliedChordName(noteA, noteB) {
+  const iA = noteIdx(noteA), iB = noteIdx(noteB);
+  // interval in semitones both ways
+  const intAB = (iB - iA + 12) % 12;
+  const intBA = (iA - iB + 12) % 12;
+
+  // For each chromatic root, check if noteA and noteB are both chord tones
+  // Prefer simpler qualities; return the first match
+  const qualityOrder = ['maj','dom7','min','min7','maj7','dim','aug','sus4','sus2'];
+  let best = null;
+  for (const root of chromatic) {
+    for (const q of qualityOrder) {
+      const tones = new Set(chordToneNotes(root, q));
+      if (tones.has(noteA) && tones.has(noteB)) {
+        // Score: prefer root == one of the notes, prefer simpler quality
+        const rootScore = (noteA === root || noteB === root) ? 0 : 1;
+        const qScore = qualityOrder.indexOf(q);
+        if (!best || rootScore < best.rootScore || (rootScore === best.rootScore && qScore < best.qScore)) {
+          const suffix = q === 'maj' ? '' : q === 'dom7' ? '7' : q === 'min' ? 'm'
+                       : q === 'min7' ? 'm7' : q === 'maj7' ? 'maj7' : q === 'dim' ? '°'
+                       : q === 'aug' ? '+' : q === 'sus4' ? 'sus4' : q === 'sus2' ? 'sus2' : q;
+          best = { label: root + suffix, rootScore, qScore };
+        }
+      }
+    }
+  }
+  return best ? best.label : `${noteA}/${noteB}`;
+}
+
 function drawMiniNeck(path, tonesFrom, tonesTo, labelMode) {
   const steps    = path.steps;
   const [sA, sB] = path.stringPair;
@@ -3733,10 +3763,10 @@ function drawMiniNeck(path, tonesFrom, tonesTo, labelMode) {
   const maxFret  = Math.max(...steps.map(s => s.fret));
   const span     = Math.max(maxFret - minFret, 1);
 
-  const STR_LBL  = 40;
-  const PAD_R    = 48;
+  const STR_LBL  = 44;   // wider to avoid overlap with dots
+  const PAD_R    = 52;   // wider for horizontal arrow
   const PAD_T    = 50;
-  const PAD_B    = 44;
+  const PAD_B    = 52;   // enough room for dot radius + two label rows
   const STR_GAP  = 34;
   const FRET_W   = Math.max(68, Math.min(100, 400 / span));
   const W        = STR_LBL + span * FRET_W + PAD_R;
@@ -3756,16 +3786,27 @@ function drawMiniNeck(path, tonesFrom, tonesTo, labelMode) {
   let g = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"
     style="width:100%;max-width:${W}px;display:block;overflow:visible">`;
 
-  // Direction arrow — right of neck, vertically centered
-  const arrMid = nTop + (numStr - 1) * STR_GAP / 2;
-  const arrX   = nRight + 14;
+  // Direction arrow — HORIZONTAL, right of neck, pointing in fret direction
+  // "up" = higher fret = arrow pointing RIGHT; "down" = lower fret = arrow pointing LEFT
+  const arrY   = nTop + (numStr - 1) * STR_GAP / 2;
+  const arrX0  = nRight + 8;
+  const arrX1  = nRight + 36;
+  const arrMidY = arrY;
   if (path.dir === 'up') {
-    g += `<polygon points="${arrX},${arrMid-13} ${arrX-7},${arrMid+5} ${arrX+7},${arrMid+5}" fill="${arrCol}" opacity="0.9"/>`;
-    g += `<text x="${arrX}" y="${arrMid+18}" text-anchor="middle" font-size="8"
+    // Arrow pointing right →
+    g += `<line x1="${arrX0}" y1="${arrMidY}" x2="${arrX1 - 6}" y2="${arrMidY}"
+            stroke="${arrCol}" stroke-width="2" opacity="0.9"/>`;
+    g += `<polygon points="${arrX1},${arrMidY} ${arrX1-8},${arrMidY-5} ${arrX1-8},${arrMidY+5}"
+            fill="${arrCol}" opacity="0.9"/>`;
+    g += `<text x="${arrX0 + (arrX1-arrX0)/2}" y="${arrMidY - 8}" text-anchor="middle" font-size="7"
             font-family="'IBM Plex Mono',monospace" font-weight="700" fill="${arrCol}">UP</text>`;
   } else {
-    g += `<polygon points="${arrX},${arrMid+13} ${arrX-7},${arrMid-5} ${arrX+7},${arrMid-5}" fill="${arrCol}" opacity="0.9"/>`;
-    g += `<text x="${arrX}" y="${arrMid-17}" text-anchor="middle" font-size="8"
+    // Arrow pointing left ←
+    g += `<line x1="${arrX0 + 6}" y1="${arrMidY}" x2="${arrX1}" y2="${arrMidY}"
+            stroke="${arrCol}" stroke-width="2" opacity="0.9"/>`;
+    g += `<polygon points="${arrX0},${arrMidY} ${arrX0+8},${arrMidY-5} ${arrX0+8},${arrMidY+5}"
+            fill="${arrCol}" opacity="0.9"/>`;
+    g += `<text x="${arrX0 + (arrX1-arrX0)/2}" y="${arrMidY - 8}" text-anchor="middle" font-size="7"
             font-family="'IBM Plex Mono',monospace" font-weight="700" fill="${arrCol}">DN</text>`;
   }
 
@@ -3780,15 +3821,17 @@ function drawMiniNeck(path, tonesFrom, tonesTo, labelMode) {
             fill="${isLand ? '#2ab8a8' : '#888878'}">${f}</text>`;
   }
 
-  // String lines — only between active pair, inactive strings dimmer
+  // String lines — labels rendered BEFORE dots so dots go on top cleanly
   for (let s = minStr; s <= maxStr; s++) {
     const y  = fy(s);
     const on = s === sA || s === sB;
     g += `<line x1="${nLeft}" y1="${y}" x2="${nRight}" y2="${y}"
             stroke="${on ? '#52534a' : '#1e1f1a'}" stroke-width="${on ? 1.5 : 0.75}"/>`;
     if (on) {
-      g += `<text x="${nLeft - 10}" y="${y + 1}" text-anchor="end" dominant-baseline="middle"
-              font-size="12" font-family="'IBM Plex Mono',monospace" font-weight="700"
+      // String label left of neck — clear background pill so it never overlaps dots
+      g += `<rect x="${2}" y="${y - 9}" width="34" height="18" rx="3" fill="#0d0e0b"/>`;
+      g += `<text x="${19}" y="${y + 1}" text-anchor="middle" dominant-baseline="middle"
+              font-size="11" font-family="'IBM Plex Mono',monospace" font-weight="700"
               fill="#c4c5b0">S${s}</text>`;
     }
   }
@@ -3814,12 +3857,11 @@ function drawMiniNeck(path, tonesFrom, tonesTo, labelMode) {
       const cx  = fx(step.fret);
       const cy  = fy(str);
       const fill= COLORS[voicing] || '#888878';
-      const op  = isOvershoot ? 0.5 : 0.92;
+      // FIX: overshoot dots fully opaque so label is readable
+      const op  = 0.92;
 
       let ringCol = null;
-      if (isOvershoot) {
-        ringCol = '#d84848';
-      } else if (isLanding) {
+      if (isLanding) {
         const root = [...tonesTo][0];
         ringCol = note === root ? '#e06060' : tonesTo.has(note) ? '#c8a84a' : null;
       } else if (isTakeoff && tonesFrom && tonesFrom.has(note)) {
@@ -3848,14 +3890,15 @@ function drawMiniNeck(path, tonesFrom, tonesTo, labelMode) {
       const fs  = lbl.length > 2 ? 6.5 : lbl.length > 1 ? 7.5 : 9;
       g += `<text x="${cx}" y="${cy+0.5}" text-anchor="middle" dominant-baseline="middle"
               font-size="${fs}" font-family="'IBM Plex Mono',monospace" font-weight="700"
-              fill="#0a0b08" opacity="${isOvershoot ? 0.6 : 1}">${lbl}</text>`;
+              fill="#0a0b08">${lbl}</text>`;
     });
 
-    // Labels below step column
+    // Labels below step column — role label + implied chord on EVERY step
     const xL   = fx(step.fret);
-    const yR   = nBot + 14;
-    const yC   = nBot + 27;
+    const yR   = nBot + DR + 14;   // clear bottom dot by radius + gap
+    const yC   = nBot + DR + 27;   // second row below that
 
+    // Role label (START / LAND / OVER) only for those roles
     if (isTakeoff || isLanding || isOvershoot) {
       const rCol = isLanding ? '#2ab8a8' : isOvershoot ? '#d84848' : '#c8a84a';
       const rLbl = isLanding ? 'LAND' : isOvershoot ? 'OVER' : 'START';
@@ -3863,18 +3906,14 @@ function drawMiniNeck(path, tonesFrom, tonesTo, labelMode) {
               font-size="8" font-family="'IBM Plex Mono',monospace" font-weight="700"
               letter-spacing="0.1em" fill="${rCol}">${rLbl}</text>`;
     }
-    if (isLanding && tonesTo) {
-      const cLbl = [...tonesTo].slice(0,3).join(' ');
-      g += `<text x="${xL}" y="${yC}" text-anchor="middle"
-              font-size="9" font-family="'Syne',sans-serif" font-weight="700"
-              fill="#2ab8a888">${cLbl}</text>`;
-    }
-    if (isTakeoff && tonesFrom) {
-      const cLbl = [...tonesFrom].slice(0,3).join(' ');
-      g += `<text x="${xL}" y="${yC}" text-anchor="middle"
-              font-size="9" font-family="'Syne',sans-serif" font-weight="700"
-              fill="#c8a84a66">${cLbl}</text>`;
-    }
+
+    // Implied chord name on every step
+    const implied = impliedChordName(step.noteA, step.noteB);
+    const chordCol = isLanding ? '#2ab8a8' : isOvershoot ? '#d84848cc' : isTakeoff ? '#c8a84a' : '#888878';
+    const chordY   = (isTakeoff || isLanding || isOvershoot) ? yC : yR;
+    g += `<text x="${xL}" y="${chordY}" text-anchor="middle"
+            font-size="10" font-family="'Syne',sans-serif" font-weight="700"
+            fill="${chordCol}">${implied}</text>`;
   });
 
   g += `</svg>`;
