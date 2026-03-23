@@ -871,7 +871,7 @@
 
 <header>
   <div class="header-title" id="header-title">Steel Note Finder</div>
-  <div class="header-sub">Williams 400 · E9 · Frets 0–24 · v2026-03-23 02:30 MT</div>
+  <div class="header-sub">Williams 400 · E9 · Frets 0–12 · v2026-03-22 21:05 MT</div>
 </header>
 
 <div class="main">
@@ -1143,6 +1143,8 @@ const VOICING_COST  = { open:0, A:1, B:1, 'A+B':1, 'B+C':2, C:1, LKL:2, LKR:2, R
                         'LKL+RKL':4,'LKL+RKR':4,'LKR+RKL':4,'LKR+RKR':4,'LKV+RKL':4,'LKV+RKR':4 };
 
 const VOICING_ORDER = ['open','A','B','A+B','B+C','C','LKL','LKR','RKL','RKR','LKV'];
+const PEDALS        = new Set(['A','B','C','A+B','B+C']);
+const LEVERS        = new Set(['LKL','LKR','LKV','RKL','RKR']);
 
 const COLORS        = { open:'#888878', A:'#c8a84a', B:'#4a9ee0', 'A+B':'#88c840', 'B+C':'#50d8b0',
                         C:'#b858c8', LKL:'#48c870', LKR:'#88d030', RKL:'#d84848', RKR:'#d87038', LKV:'#38c0c0' };
@@ -1386,8 +1388,11 @@ function findNotePositions(note) {
 function isCompatible(v1, v2) {
   if (v1 === v2) return true;
   if ((v1==='A'&&v2==='C')||(v1==='C'&&v2==='A')) return false;
-  // A+B is incompatible with standalone A or B (redundant/conflicting)
   if ((v1==='A+B'&&(v2==='A'||v2==='B'))||((v1==='A'||v1==='B')&&v2==='A+B')) return false;
+  const LK = new Set(['LKL','LKR','LKV']);
+  const RK = new Set(['RKL','RKR']);
+  if (LK.has(v1) && LK.has(v2)) return false;
+  if (RK.has(v1) && RK.has(v2)) return false;
   return true;
 }
 
@@ -2403,8 +2408,6 @@ function buildKeyNeck(normed, scaleNotes, dotNotes, ctSet, scaleArr) {
   }
 
   // Dot shape helper — circle for open, rounded-square for pedals, pill for levers
-  const PEDALS  = new Set(['A','B','C']);
-  const LEVERS  = new Set(['LKL','LKR','LKV','RKL','RKR']);
   function drawDotShape(cx, cy, r, fill, ringCol, opacity, out2) {
     // fill = voicing color; ringCol = role ring color or null
     const strokeW = ringCol ? 2.5 : 0;
@@ -2709,9 +2712,14 @@ function buildSongPanelHTML(song) {
         <button class="pl-run-btn" onclick="runPositionBridge(${song.id})">▶ Find Paths</button>
       </div>
 
-      <!-- Landing chord + fret -->
+      <!-- From + Landing chord + fret -->
       <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:1rem">
-        <div class="config-group" style="flex:1;min-width:140px">
+        <div class="config-group" style="flex:1;min-width:120px">
+          <div class="config-label">From chord <span style="color:var(--text-dim);font-weight:400">(scale context)</span></div>
+          <select class="config-select" id="pb-chord-a-${song.id}" style="font-size:14px;font-family:'Syne',sans-serif;font-weight:700"></select>
+        </div>
+        <div style="font-size:20px;color:var(--text-dim);padding-bottom:6px;flex-shrink:0">→</div>
+        <div class="config-group" style="flex:1;min-width:120px">
           <div class="config-label">Landing chord</div>
           <select class="config-select" id="pb-chord-b-${song.id}" style="font-size:14px;font-family:'Syne',sans-serif;font-weight:700"></select>
         </div>
@@ -3712,64 +3720,175 @@ function findBridgePaths(chordTo, keyRoot, keyModeName,
 
 // ── Shared rendering ───────────────────────────────────
 
-function plStepHTML(step, tonesFrom, tonesTo) {
-  const isFirst     = step.role === 'takeoff';
-  const isLanding   = step.role === 'landing';
-  const isOvershoot = step.role === 'overshoot';
-  const fretCol     = isFirst ? 'var(--gold)'
-                    : isLanding ? 'var(--teal)'
-                    : isOvershoot ? '#d84848'
-                    : 'var(--text-dim)';
-  const roleLabel   = isFirst ? 'Start'
-                    : isLanding ? 'Land'
-                    : isOvershoot ? 'Over'
-                    : '·';
+// ── Mini neck SVG renderer ─────────────────────────────
 
-  function noteRow(note, str, voicing, tones) {
-    const vLabel = voicing === 'open' ? '·' : voicing;
-    const vCol   = COLORS[voicing] || '#888';
-    const nCol   = (tones && tones.has(note)) ? (note === [...tones][0] ? '#e06060' : 'var(--text)') : 'var(--text-mid)';
-    return `<div class="pl-note-row">
-      <span style="font-size:13px;font-weight:700;color:var(--text);min-width:24px;font-family:'IBM Plex Mono',monospace">S${str}</span>
-      <span style="font-size:13px;font-weight:700;color:${vCol};font-family:'IBM Plex Mono',monospace;min-width:28px">${vLabel}</span>
-      <span style="color:${nCol};font-size:9px;font-weight:400;font-family:'IBM Plex Mono',monospace;margin-left:2px">${note}</span>
-    </div>`;
+function drawMiniNeck(path, tonesFrom, tonesTo, labelMode) {
+  const steps    = path.steps;
+  const [sA, sB] = path.stringPair;
+  const minStr   = Math.min(sA, sB);
+  const maxStr   = Math.max(sA, sB);
+  const numStr   = maxStr - minStr + 1;
+
+  const minFret  = Math.min(...steps.map(s => s.fret));
+  const maxFret  = Math.max(...steps.map(s => s.fret));
+  const span     = Math.max(maxFret - minFret, 1);
+
+  const STR_LBL  = 40;
+  const PAD_R    = 48;
+  const PAD_T    = 50;
+  const PAD_B    = 44;
+  const STR_GAP  = 34;
+  const FRET_W   = Math.max(68, Math.min(100, 400 / span));
+  const W        = STR_LBL + span * FRET_W + PAD_R;
+  const H        = PAD_T + (numStr - 1) * STR_GAP + PAD_B;
+  const DR       = 12;
+
+  const nTop  = PAD_T;
+  const nBot  = PAD_T + (numStr - 1) * STR_GAP;
+  const nLeft = STR_LBL;
+  const nRight= STR_LBL + span * FRET_W;
+
+  const fx = f => STR_LBL + (f - minFret) * FRET_W;
+  const fy = s => PAD_T + (s - minStr) * STR_GAP;
+
+  const arrCol = path.dir === 'up' ? '#48c870' : '#c8a84a';
+
+  let g = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"
+    style="width:100%;max-width:${W}px;display:block;overflow:visible">`;
+
+  // Direction arrow — right of neck, vertically centered
+  const arrMid = nTop + (numStr - 1) * STR_GAP / 2;
+  const arrX   = nRight + 14;
+  if (path.dir === 'up') {
+    g += `<polygon points="${arrX},${arrMid-13} ${arrX-7},${arrMid+5} ${arrX+7},${arrMid+5}" fill="${arrCol}" opacity="0.9"/>`;
+    g += `<text x="${arrX}" y="${arrMid+18}" text-anchor="middle" font-size="8"
+            font-family="'IBM Plex Mono',monospace" font-weight="700" fill="${arrCol}">UP</text>`;
+  } else {
+    g += `<polygon points="${arrX},${arrMid+13} ${arrX-7},${arrMid-5} ${arrX+7},${arrMid-5}" fill="${arrCol}" opacity="0.9"/>`;
+    g += `<text x="${arrX}" y="${arrMid-17}" text-anchor="middle" font-size="8"
+            font-family="'IBM Plex Mono',monospace" font-weight="700" fill="${arrCol}">DN</text>`;
   }
 
-  const tones = isFirst ? tonesFrom : isLanding ? tonesTo : null;
-  return `<div class="pl-step">
-    <div class="pl-step-fret" style="color:${fretCol}${isOvershoot?';text-decoration:line-through;opacity:0.7':''}">F${step.fret}</div>
-    <div class="pl-step-notes">
-      ${noteRow(step.noteA, step.stringA, step.voicingA, tones)}
-      ${noteRow(step.noteB, step.stringB, step.voicingB, tones)}
-    </div>
-    <div class="pl-step-role" style="color:${fretCol};opacity:${isFirst||isLanding||isOvershoot?1:0.5}">${roleLabel}</div>
-  </div>`;
-}
+  // Fret lines + numbers (numbers high above neck)
+  for (let f = minFret; f <= maxFret; f++) {
+    const x      = fx(f);
+    const isLand = f === steps[steps.length - 1].fret;
+    g += `<line x1="${x}" y1="${nTop}" x2="${x}" y2="${nBot}"
+            stroke="${isLand ? '#2ab8a8aa' : '#32332c'}" stroke-width="${isLand ? 2 : 1}"/>`;
+    g += `<text x="${x}" y="${nTop - 18}" text-anchor="middle"
+            font-size="14" font-family="'Syne',sans-serif" font-weight="800"
+            fill="${isLand ? '#2ab8a8' : '#888878'}">${f}</text>`;
+  }
 
-function plPathHTML(path, pathIdx, tonesFrom, tonesTo) {
-  const intName   = intervalName(path.intervalActual);
-  const dirSymbol = path.dir === 'up' ? '↑' : '↓';
-  const spLabel   = path.stringPair ? `S${path.stringPair[0]} · S${path.stringPair[1]}` : '';
+  // String lines — only between active pair, inactive strings dimmer
+  for (let s = minStr; s <= maxStr; s++) {
+    const y  = fy(s);
+    const on = s === sA || s === sB;
+    g += `<line x1="${nLeft}" y1="${y}" x2="${nRight}" y2="${y}"
+            stroke="${on ? '#52534a' : '#1e1f1a'}" stroke-width="${on ? 1.5 : 0.75}"/>`;
+    if (on) {
+      g += `<text x="${nLeft - 10}" y="${y + 1}" text-anchor="end" dominant-baseline="middle"
+              font-size="12" font-family="'IBM Plex Mono',monospace" font-weight="700"
+              fill="#c4c5b0">S${s}</text>`;
+    }
+  }
 
-  const stepParts = [];
-  path.steps.forEach((step, si) => {
-    stepParts.push(plStepHTML(step, tonesFrom, tonesTo));
-    if (si < path.steps.length - 1) {
-      const next = path.steps[si + 1];
-      const col = path.dir === 'up' ? '#48c870' : '#c8a84a';
-      // Show voicing change indicators between steps
-      const vcA = next.voicingA !== step.voicingA;
-      const vcB = next.voicingB !== step.voicingB;
-      const vcLabelA = vcA ? (next.voicingA === 'open' ? '−' + step.voicingA : (step.voicingA === 'open' ? '+' : '') + next.voicingA) : '';
-      const vcLabelB = vcB ? (next.voicingB === 'open' ? '−' + step.voicingB : (step.voicingB === 'open' ? '+' : '') + next.voicingB) : '';
-      const vcText   = [vcLabelA, vcLabelB].filter(Boolean).join(' ');
-      const changeHint = vcText
-        ? `<div style="font-size:8px;color:${col};letter-spacing:0.06em;text-align:center;margin-top:2px">${vcText}</div>`
-        : '';
-      stepParts.push(`<div class="pl-step-connector" style="color:${col};display:flex;flex-direction:column;align-items:center">›${changeHint}</div>`);
+  // Movement lines (dashed, under dots)
+  ['A','B'].forEach(v => {
+    const sk = v === 'A' ? 'stringA' : 'stringB';
+    for (let i = 0; i < steps.length - 1; i++) {
+      g += `<line x1="${fx(steps[i].fret)}" y1="${fy(steps[i][sk])}"
+              x2="${fx(steps[i+1].fret)}" y2="${fy(steps[i+1][sk])}"
+              stroke="${arrCol}44" stroke-width="1.5" stroke-dasharray="4 3"/>`;
     }
   });
+
+  // Dots
+  steps.forEach(step => {
+    const isLanding   = step.role === 'landing';
+    const isOvershoot = step.role === 'overshoot';
+    const isTakeoff   = step.role === 'takeoff';
+
+    [['A', step.stringA, step.noteA, step.voicingA],
+     ['B', step.stringB, step.noteB, step.voicingB]].forEach(([, str, note, voicing]) => {
+      const cx  = fx(step.fret);
+      const cy  = fy(str);
+      const fill= COLORS[voicing] || '#888878';
+      const op  = isOvershoot ? 0.5 : 0.92;
+
+      let ringCol = null;
+      if (isOvershoot) {
+        ringCol = '#d84848';
+      } else if (isLanding) {
+        const root = [...tonesTo][0];
+        ringCol = note === root ? '#e06060' : tonesTo.has(note) ? '#c8a84a' : null;
+      } else if (isTakeoff && tonesFrom && tonesFrom.has(note)) {
+        ringCol = '#c8a84a88';
+      }
+
+      const sw  = ringCol ? 2.5 : 0;
+      const stk = ringCol || 'none';
+
+      let shape = '';
+      if (PEDALS.has(voicing)) {
+        const s = DR * 1.72;
+        shape = `<rect x="${cx-s/2}" y="${cy-s/2}" width="${s}" height="${s}"
+                   fill="${fill}" opacity="${op}" rx="3" stroke="${stk}" stroke-width="${sw}"/>`;
+      } else if (LEVERS.has(voicing)) {
+        const pw = DR * 2.1, ph = DR * 1.3;
+        shape = `<rect x="${cx-pw/2}" y="${cy-ph/2}" width="${pw}" height="${ph}"
+                   fill="${fill}" opacity="${op}" rx="${ph/2}" stroke="${stk}" stroke-width="${sw}"/>`;
+      } else {
+        shape = `<circle cx="${cx}" cy="${cy}" r="${DR}"
+                   fill="${fill}" opacity="${op}" stroke="${stk}" stroke-width="${sw}"/>`;
+      }
+      g += shape;
+
+      const lbl = labelMode === 'note' ? note : (voicing === 'open' ? '·' : voicing);
+      const fs  = lbl.length > 2 ? 6.5 : lbl.length > 1 ? 7.5 : 9;
+      g += `<text x="${cx}" y="${cy+0.5}" text-anchor="middle" dominant-baseline="middle"
+              font-size="${fs}" font-family="'IBM Plex Mono',monospace" font-weight="700"
+              fill="#0a0b08" opacity="${isOvershoot ? 0.6 : 1}">${lbl}</text>`;
+    });
+
+    // Labels below step column
+    const xL   = fx(step.fret);
+    const yR   = nBot + 14;
+    const yC   = nBot + 27;
+
+    if (isTakeoff || isLanding || isOvershoot) {
+      const rCol = isLanding ? '#2ab8a8' : isOvershoot ? '#d84848' : '#c8a84a';
+      const rLbl = isLanding ? 'LAND' : isOvershoot ? 'OVER' : 'START';
+      g += `<text x="${xL}" y="${yR}" text-anchor="middle"
+              font-size="8" font-family="'IBM Plex Mono',monospace" font-weight="700"
+              letter-spacing="0.1em" fill="${rCol}">${rLbl}</text>`;
+    }
+    if (isLanding && tonesTo) {
+      const cLbl = [...tonesTo].slice(0,3).join(' ');
+      g += `<text x="${xL}" y="${yC}" text-anchor="middle"
+              font-size="9" font-family="'Syne',sans-serif" font-weight="700"
+              fill="#2ab8a888">${cLbl}</text>`;
+    }
+    if (isTakeoff && tonesFrom) {
+      const cLbl = [...tonesFrom].slice(0,3).join(' ');
+      g += `<text x="${xL}" y="${yC}" text-anchor="middle"
+              font-size="9" font-family="'Syne',sans-serif" font-weight="700"
+              fill="#c8a84a66">${cLbl}</text>`;
+    }
+  });
+
+  g += `</svg>`;
+  return g;
+}
+
+function plPathHTML(path, pathIdx, tonesFrom, tonesTo, containerId) {
+  const intName  = intervalName(path.intervalActual);
+  const dirSymbol= path.dir === 'up' ? '↑' : '↓';
+  const spLabel  = path.stringPair ? `S${path.stringPair[0]} · S${path.stringPair[1]}` : '';
+  const uid      = `${containerId || 'pl'}-p${pathIdx}`;
+
+  const svgV = drawMiniNeck(path, tonesFrom, tonesTo, 'voicing');
+  const svgN = drawMiniNeck(path, tonesFrom, tonesTo, 'note');
 
   return `<div class="pl-path">
     <div class="pl-path-header">
@@ -3777,12 +3896,29 @@ function plPathHTML(path, pathIdx, tonesFrom, tonesTo) {
       <span class="pl-path-interval-badge">${dirSymbol} ${intName}</span>
       ${spLabel ? `<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:var(--gold);padding:2px 7px;border-radius:20px;border:1px solid var(--gold-dim);background:var(--bg3)">${spLabel}</span>` : ''}
       <span class="pl-path-travel">${path.totalTravel} fret travel</span>
+      <button onclick="plToggleLabel('${uid}')"
+        style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.1em;
+               text-transform:uppercase;padding:3px 8px;border-radius:3px;cursor:pointer;
+               border:1px solid var(--border2);background:var(--bg3);color:var(--text-dim);
+               margin-left:auto;flex-shrink:0">Note / Voicing</button>
     </div>
-    <div class="pl-steps">${stepParts.join('')}</div>
+    <div style="padding:4px 0 2px;overflow-x:auto">
+      <div id="${uid}-v">${svgV}</div>
+      <div id="${uid}-n" style="display:none">${svgN}</div>
+    </div>
   </div>`;
 }
 
-function plTransitionHTML(fromName, toName, romanFrom, romanTo, paths, tonesFrom, tonesTo) {
+function plToggleLabel(uid) {
+  const v = document.getElementById(uid + '-v');
+  const n = document.getElementById(uid + '-n');
+  if (!v || !n) return;
+  const showV = v.style.display !== 'none';
+  v.style.display = showV ? 'none' : '';
+  n.style.display = showV ? '' : 'none';
+}
+
+function plTransitionHTML(fromName, toName, romanFrom, romanTo, paths, tonesFrom, tonesTo, containerId) {
   let html = `<div class="pl-transition">
     <div class="pl-transition-header">
       <span class="pl-chord-from">${fromName} <span style="font-size:11px;color:var(--text-dim);font-family:'IBM Plex Mono',monospace">${romanFrom}</span></span>
@@ -3793,7 +3929,7 @@ function plTransitionHTML(fromName, toName, romanFrom, romanTo, paths, tonesFrom
   if (!paths.length) {
     html += `<div class="pl-no-paths">No clean parallel paths found — try a different interval, direction, or check the fret range.</div>`;
   } else {
-    paths.forEach((p, pi) => { html += plPathHTML(p, pi, tonesFrom, tonesTo); });
+    paths.forEach((p, pi) => { html += plPathHTML(p, pi, tonesFrom, tonesTo, containerId || 'pl'); });
   }
   return html + `</div>`;
 }
@@ -3828,13 +3964,12 @@ function pbSetOvershoot(id, btn) {
   pbGetSettings(id).overshoot = parseInt(btn.dataset.overshoot) === 1;
 }
 
-// Populate landing chord dropdown from song sections
 function pbPopulateChords(id) {
   const song = songs.find(s => s.id === id);
   if (!song) return;
+  const selA = document.getElementById('pb-chord-a-' + id);
   const selB = document.getElementById('pb-chord-b-' + id);
-  if (!selB) return;
-
+  if (!selA || !selB) return;
   const seen = new Set(), chords = [];
   for (const sec of song.state.songSections) {
     if (!sec.active) continue;
@@ -3844,7 +3979,10 @@ function pbPopulateChords(id) {
       }
     }
   }
-  selB.innerHTML = chords.map((c, i) => `<option value="${c}" ${i===0?'selected':''}>${c}</option>`).join('');
+  const opts = chords.map(c => `<option value="${c}">${c}</option>`).join('');
+  selA.innerHTML = opts;
+  selB.innerHTML = opts;
+  if (chords.length > 1) selB.selectedIndex = 1;
 }
 
 // Auto-fill landing fret from #1 ranked position
@@ -3863,15 +4001,17 @@ function runPositionBridge(id) {
   const container = document.getElementById('pb-results-' + id);
   if (!container) return;
 
-  const toChordName = document.getElementById('pb-chord-b-' + id)?.value;
-  const toLandFret  = parseInt(document.getElementById('pb-to-fret-' + id)?.value || 5);
+  const fromChordName = document.getElementById('pb-chord-a-' + id)?.value;
+  const toChordName   = document.getElementById('pb-chord-b-' + id)?.value;
+  const toLandFret    = parseInt(document.getElementById('pb-to-fret-' + id)?.value || 5);
 
   if (!toChordName) {
     container.innerHTML = '<div class="pl-empty">Select a landing chord first.</div>';
     return;
   }
 
-  const toP = parseChordName(toChordName);
+  const fromP = fromChordName ? parseChordName(fromChordName) : null;
+  const toP   = parseChordName(toChordName);
   if (!toP) {
     container.innerHTML = '<div class="pl-empty">Could not parse chord name.</div>';
     return;
@@ -3885,13 +4025,15 @@ function runPositionBridge(id) {
     toLandFret, keyVoicings, overshoot
   );
 
-  const tonesTo  = new Set(chordToneNotes(toP.root, toP.quality));
-  const modeObj  = MODES.find(m => m.name === keyMode) || MODES[0];
-  const romanTo  = romanNumeral(toP.root, toP.quality, keyRoot, modeObj.intervals);
+  const tonesTo   = new Set(chordToneNotes(toP.root, toP.quality));
+  const tonesFrom = fromP ? new Set(chordToneNotes(fromP.root, fromP.quality)) : null;
+  const modeObj   = MODES.find(m => m.name === keyMode) || MODES[0];
+  const romanTo   = romanNumeral(toP.root, toP.quality, keyRoot, modeObj.intervals);
+  const romanFrom = fromP ? romanNumeral(fromP.root, fromP.quality, keyRoot, modeObj.intervals) : null;
 
   let html = `<div class="pl-transition">
     <div class="pl-transition-header">
-      <span class="pl-arrow" style="color:var(--text-dim)">→ landing on</span>
+      ${fromChordName ? `<span class="pl-chord-from">${fromChordName} <span style="font-size:11px;color:var(--text-dim);font-family:'IBM Plex Mono',monospace">${romanFrom}</span></span><span class="pl-arrow">→</span>` : ''}
       <span class="pl-chord-to">${toChordName} <span style="font-size:11px;color:var(--teal-dim);font-family:'IBM Plex Mono',monospace">${romanTo}</span></span>
       <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-dim)">fret ${toLandFret}</span>
       <span class="pl-path-count">${paths.length} path${paths.length!==1?'s':''}</span>
@@ -3900,7 +4042,7 @@ function runPositionBridge(id) {
   if (!paths.length) {
     html += `<div class="pl-no-paths">No paths found — try a different interval, more steps, or check the landing fret.</div>`;
   } else {
-    paths.forEach((p, pi) => { html += plPathHTML(p, pi, null, tonesTo); });
+    paths.forEach((p, pi) => { html += plPathHTML(p, pi, tonesFrom, tonesTo, 'pb-' + id); });
   }
   container.innerHTML = html + `</div>`;
 }
