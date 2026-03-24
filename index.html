@@ -390,6 +390,8 @@
     border-color: var(--teal) !important;
     color: #0a0b08 !important;
     font-weight: 800;
+    font-size: 16px;
+    padding: 6px 14px;
     box-shadow: 0 0 8px 2px var(--teal-dim);
   }
   .section-solo-btn {
@@ -879,8 +881,8 @@
   <div class="mode-tabs-wrap">
     <div class="mode-tabs" id="main-tabs">
       <button class="mode-tab settings-tab active" onclick="switchTab('settings')" id="tab-settings">⚙ Settings</button>
-      <button class="mode-tab settings-tab" onclick="switchTab('chordlab')" id="tab-chordlab">♫ Chord Lab</button>
       <!-- Song tabs injected here by JS -->
+      <button class="mode-tab settings-tab" onclick="switchTab('chordlab')" id="tab-chordlab">♫ Chord Lab</button>
     </div>
   </div>
 
@@ -1113,7 +1115,7 @@ const stringChanges = {
 // Build a map: for each fret, for each string, all reachable notes and which voicing gets them
 function buildNeckMap() {
   const map = {}; // map[fret][string] = [{note, voicing}, ...]
-  for (let fret = 0; fret <= 12; fret++) {
+  for (let fret = 0; fret <= 24; fret++) {
     map[fret] = {};
     for (let s = 1; s <= 10; s++) {
       const base = shiftNote(openStrings[s], fret);
@@ -1375,7 +1377,7 @@ if (noteGrid) {
 // For a given note, find all positions on the neck {fret, string, voicing}
 function findNotePositions(note) {
   const positions = [];
-  for (let fret = 0; fret <= 12; fret++) {
+  for (let fret = 0; fret <= 24; fret++) {
     for (let s = 1; s <= 10; s++) {
       for (const e of NECK_MAP[fret][s]) {
         if (e.note === note) positions.push({fret, string:s, voicing:e.voicing, note});
@@ -2310,18 +2312,22 @@ function computeKeyMap(songId, wCov, wEase, wChord) {
 
   const keyResultEl = document.getElementById('key-result-' + songId);
   if (!keyResultEl) return;
-  keyResultEl.innerHTML=`
-    <div class="key-result-title">${keyRoot} ${mode.label}</div>
-    <div class="key-scale-notes">${noteLegend}
+  // Inject scale line above sections
+  const scaleHeaderEl = document.getElementById('scale-header-' + songId);
+  if (scaleHeaderEl) {
+    scaleHeaderEl.innerHTML = `<div class="key-result-title" style="margin-bottom:4px">${keyRoot} ${mode.label}</div>
+    <div class="key-scale-notes" style="margin-bottom:0">${noteLegend}
       <span style="margin-left:1rem;font-size:9px;color:var(--text-dim)">
         <span style="color:#e06060">■</span> root &nbsp;
         <span style="color:var(--gold)">■</span> chord tones &nbsp;
         <span style="color:var(--text)">■</span> scale
       </span>
-    </div>
+    </div>`;
+  }
+  keyResultEl.innerHTML=`
     <div class="key-heat-label">Top 5 positions — long press to see chord voicings</div>
-    <div class="key-fret-cards" id="top5-cards-container-${songId}">${cards}</div>
     <div id="fret-breakdown-container-${songId}"></div>
+    <div class="key-fret-cards" id="top5-cards-container-${songId}">${cards}</div>
     <div class="key-heat-label">Playability heatmap</div>
     <div class="neck-wrap">
       <svg id="neck3" viewBox="0 0 980 380" xmlns="http://www.w3.org/2000/svg">${neckSvg}</svg>
@@ -2584,11 +2590,23 @@ function refreshSongNav(id) {
   const hasPrev = idx > 0, hasNext = idx < songs.length - 1;
   const prevId = hasPrev ? songs[idx-1].id : null;
   const nextId = hasNext ? songs[idx+1].id : null;
-  navBar.innerHTML = `
-    <button class="song-nav-btn" ${hasPrev?'':'disabled'} onclick="${hasPrev?`switchTab('song-${prevId}')`:'void 0'}">◀ ${hasPrev?songs[idx-1].name:'–'}</button>
-    <span style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-dim)">${idx+1} of ${songs.length}</span>
-    <button class="song-nav-btn" ${hasNext?'':'disabled'} onclick="${hasNext?`switchTab('song-${nextId}')`:'void 0'}">${hasNext?songs[idx+1].name:'–'} ▶</button>
-  `;
+  const prevBtn = document.createElement('button');
+  prevBtn.className = 'song-nav-btn';
+  prevBtn.textContent = '◀ ' + (hasPrev ? songs[idx-1].name : '–');
+  if (!hasPrev) prevBtn.disabled = true;
+  else prevBtn.onclick = () => switchTab('song-' + prevId);
+  const ctr = document.createElement('span');
+  ctr.style.cssText = 'font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-dim)';
+  ctr.textContent = (idx+1) + ' of ' + songs.length;
+  const nextBtn = document.createElement('button');
+  nextBtn.className = 'song-nav-btn';
+  nextBtn.textContent = (hasNext ? songs[idx+1].name : '–') + ' ▶';
+  if (!hasNext) nextBtn.disabled = true;
+  else nextBtn.onclick = () => switchTab('song-' + nextId);
+  navBar.innerHTML = '';
+  navBar.appendChild(prevBtn);
+  navBar.appendChild(ctr);
+  navBar.appendChild(nextBtn);
 }
 
 // ── Create DOM elements for a song ───────────────────
@@ -2598,7 +2616,12 @@ function createSongTab(song) {
   tab.id = 'tab-song-' + song.id;
   tab.textContent = song.name;
   tab.onclick = () => switchTab('song-' + song.id);
-  document.getElementById('main-tabs').appendChild(tab);
+  const tabsEl2 = document.getElementById('main-tabs');
+  if (tabsEl2) {
+    const clTab = document.getElementById('tab-chordlab');
+    if (clTab) tabsEl2.insertBefore(tab, clTab);
+    else tabsEl2.appendChild(tab);
+  }
 }
 
 function createSongPanel(song) {
@@ -2621,9 +2644,6 @@ function buildSongPanelHTML(song) {
   return `
     <!-- Song nav -->
     <div class="song-nav-bar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;padding-bottom:0.75rem;border-bottom:1px solid var(--border)">
-      <button class="song-nav-btn" ${hasPrev?'':'disabled'} onclick="${hasPrev?`switchTab('song-${prevId}')`:'void 0'}">◀ ${hasPrev?songs[idx-1].name:'–'}</button>
-      <span style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-dim)">${idx+1} of ${songs.length}</span>
-      <button class="song-nav-btn" ${hasNext?'':'disabled'} onclick="${hasNext?`switchTab('song-${nextId}')`:'void 0'}">${hasNext?songs[idx+1].name:'–'} ▶</button>
     </div>
 
     <!-- Song title -->
@@ -2638,68 +2658,61 @@ function buildSongPanelHTML(song) {
 
     <!-- Chart input -->
     <div class="song-input-wrap">
-      <div class="selector-label">Paste chord chart</div>
-      <textarea id="song-paste-${song.id}" class="song-paste"
-        placeholder="Paste your chord chart here&#10;&#10;Verse Chords&#10;E | G#m | F#m&#10;&#10;Chorus:&#10;C#m | A | B7">${st.chartText||''}</textarea>
-      <button class="walk-btn" style="margin-top:8px;margin-bottom:0"
-        onclick="parseSong(${song.id})">▶ Parse Chart</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div class="selector-label" style="margin-bottom:0">Paste chord chart</div>
+        <button onclick="toggleChartInput(${song.id})" id="chart-collapse-btn-${song.id}"
+          style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.1em;
+                 text-transform:uppercase;padding:3px 10px;border-radius:3px;
+                 border:1px solid var(--border2);background:var(--bg3);
+                 color:var(--text-dim);cursor:pointer;flex-shrink:0">▲ Hide</button>
+      </div>
+      <div id="chart-input-body-${song.id}">
+        <textarea id="song-paste-${song.id}" class="song-paste"
+          placeholder="Paste your chord chart here&#10;&#10;Verse Chords&#10;E | G#m | F#m&#10;&#10;Chorus:&#10;C#m | A | B7">${st.chartText||''}</textarea>
+        <button class="walk-btn" style="margin-top:8px;margin-bottom:0"
+          onclick="parseSong(${song.id})">▶ Parse Chart</button>
+        <div class="song-key-row" id="song-key-row-${song.id}" style="display:${st.detectedKey?'':'none'}">
+          <div class="song-key-detected" id="song-key-detected-${song.id}"></div>
+          <button class="song-key-override-btn" onclick="toggleKeyOverride(${song.id})">Override</button>
+        </div>
+        <div id="key-override-panel-${song.id}" style="display:${st.keyOverride?'':'none'}">
+          <div class="walk-config" style="margin-top:0.75rem;position:relative">
+            <button onclick="closeKeyOverride(${song.id})"
+              style="position:absolute;top:6px;right:6px;font-family:'IBM Plex Mono',monospace;
+                     font-size:13px;line-height:1;padding:3px 8px;border-radius:3px;
+                     border:1px solid var(--border2);background:var(--bg3);
+                     color:var(--text-dim);cursor:pointer;z-index:1"
+              title="Close panel (keep manual key)">✕</button>
+            <div class="config-group">
+              <div class="config-label">Key root</div>
+              <div class="note-select-mini" id="key-root-grid-${song.id}"></div>
+            </div>
+            <div class="config-group">
+              <div class="config-label">Mode</div>
+              <div class="key-mode-grid" id="key-mode-grid-${song.id}"></div>
+            </div>
+          </div>
+        </div>
+        <div id="manual-key-panel-${song.id}" style="display:${st.songSections.length?'none':''}">
+          <div class="walk-config" style="margin-top:0.75rem">
+            <div class="config-group">
+              <div class="config-label">Key root</div>
+              <div class="note-select-mini" id="key-root-grid-manual-${song.id}"></div>
+            </div>
+            <div class="config-group">
+              <div class="config-label">Mode</div>
+              <div class="key-mode-grid" id="key-mode-grid-manual-${song.id}"></div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- Parsed sections -->
+    <!-- Scale header + Parsed sections — always visible -->
     <div id="song-sections-${song.id}" style="display:${st.songSections.length?'':'none'}">
-      <div class="selector-label" style="margin-top:1.25rem">Sections — tap label to rename</div>
+      <div id="scale-header-${song.id}" style="margin-top:1.25rem;margin-bottom:0.75rem"></div>
+      <div class="selector-label" style="margin-bottom:6px">Sections — tap label to rename</div>
       <div id="section-list-${song.id}"></div>
-      <div class="song-key-row" id="song-key-row-${song.id}" style="display:${st.detectedKey?'':'none'}">
-        <div class="song-key-detected" id="song-key-detected-${song.id}"></div>
-        <button class="song-key-override-btn" onclick="toggleKeyOverride(${song.id})">Override</button>
-      </div>
-      <div id="key-override-panel-${song.id}" style="display:${st.keyOverride?'':'none'}">
-        <div class="walk-config" style="margin-top:0.75rem;position:relative">
-          <button onclick="closeKeyOverride(${song.id})"
-            style="position:absolute;top:6px;right:6px;font-family:'IBM Plex Mono',monospace;
-                   font-size:13px;line-height:1;padding:3px 8px;border-radius:3px;
-                   border:1px solid var(--border2);background:var(--bg3);
-                   color:var(--text-dim);cursor:pointer;z-index:1"
-            title="Close panel (keep manual key)">✕</button>
-          <div class="config-group">
-            <div class="config-label">Key root</div>
-            <div class="note-select-mini" id="key-root-grid-${song.id}"></div>
-          </div>
-          <div class="config-group">
-            <div class="config-label">Mode</div>
-            <div class="key-mode-grid" id="key-mode-grid-${song.id}"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Manual key (no song yet) -->
-    <div id="manual-key-panel-${song.id}" style="display:${st.songSections.length?'none':''}">
-      <div class="walk-config" style="margin-top:0.75rem">
-        <div class="config-group">
-          <div class="config-label">Key root</div>
-          <div class="note-select-mini" id="key-root-grid-manual-${song.id}"></div>
-        </div>
-        <div class="config-group">
-          <div class="config-label">Mode</div>
-          <div class="key-mode-grid" id="key-mode-grid-manual-${song.id}"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Node display toggle moved below key-result -->
-    <div id="key-result-${song.id}"></div>
-
-    <!-- Node label -->
-    <div style="margin:0.75rem 0 1rem">
-      <div class="selector-label" style="margin-bottom:8px">Node label</div>
-      <div class="node-display-toggle" id="node-display-toggle-${song.id}">
-        <button class="node-disp-btn ${st.nodeDisplay==='note'?'active':''}"           data-mode="note"           onclick="setNodeDisplaySong(${song.id},this)">Note</button>
-        <button class="node-disp-btn ${st.nodeDisplay==='voicing'?'active':''}"        data-mode="voicing"        onclick="setNodeDisplaySong(${song.id},this)">Voicing</button>
-        <button class="node-disp-btn ${st.nodeDisplay==='degree'?'active':''}"         data-mode="degree"         onclick="setNodeDisplaySong(${song.id},this)">Degree</button>
-        <button class="node-disp-btn ${st.nodeDisplay==='note-voicing'?'active':''}"   data-mode="note-voicing"   onclick="setNodeDisplaySong(${song.id},this)">Note / Voicing</button>
-        <button class="node-disp-btn ${st.nodeDisplay==='degree-voicing'?'active':''}" data-mode="degree-voicing" onclick="setNodeDisplaySong(${song.id},this)">Degree / Voicing</button>
-      </div>
     </div>
 
     <!-- ══ POSITION BRIDGE MODULE ══ -->
@@ -2770,8 +2783,23 @@ function buildSongPanelHTML(song) {
         </div>
       </div>
 
-      <div id="pb-results-${song.id}">
+      <div id="pb-results-${song.id}" style="max-height:420px;overflow-y:auto;overflow-x:hidden;">
         <div class="pl-empty">Select a landing chord and tap Find Paths</div>
+      </div>
+    </div>
+
+    <!-- Node display toggle -->
+    <div id="key-result-${song.id}"></div>
+
+    <!-- Node label -->
+    <div style="margin:0.75rem 0 1rem">
+      <div class="selector-label" style="margin-bottom:8px">Node label</div>
+      <div class="node-display-toggle" id="node-display-toggle-${song.id}">
+        <button class="node-disp-btn ${st.nodeDisplay==='note'?'active':''}"           data-mode="note"           onclick="setNodeDisplaySong(${song.id},this)">Note</button>
+        <button class="node-disp-btn ${st.nodeDisplay==='voicing'?'active':''}"        data-mode="voicing"        onclick="setNodeDisplaySong(${song.id},this)">Voicing</button>
+        <button class="node-disp-btn ${st.nodeDisplay==='degree'?'active':''}"         data-mode="degree"         onclick="setNodeDisplaySong(${song.id},this)">Degree</button>
+        <button class="node-disp-btn ${st.nodeDisplay==='note-voicing'?'active':''}"   data-mode="note-voicing"   onclick="setNodeDisplaySong(${song.id},this)">Note / Voicing</button>
+        <button class="node-disp-btn ${st.nodeDisplay==='degree-voicing'?'active':''}" data-mode="degree-voicing" onclick="setNodeDisplaySong(${song.id},this)">Degree / Voicing</button>
       </div>
     </div>
 
@@ -2995,6 +3023,15 @@ function closeKeyOverride(id) {
   if (btn) btn.textContent = 'Override';
 }
 
+function toggleChartInput(id) {
+  const body = document.getElementById('chart-input-body-' + id);
+  const btn  = document.getElementById('chart-collapse-btn-' + id);
+  if (!body || !btn) return;
+  const hidden = body.style.display === 'none';
+  body.style.display = hidden ? '' : 'none';
+  btn.textContent = hidden ? '▲ Hide' : '▼ Show';
+}
+
 function toggleKeyOverride(id) {
   loadSongState(id);
   const panel = document.getElementById('key-override-panel-' + id);
@@ -3075,7 +3112,8 @@ function renderSectionListSong(id) {
     const modeObj = MODES.find(m => m.name === song.state.keyMode);
     sec.chords.forEach(ch => {
       const info = modeObj ? chordPillInfo(ch.name, song.state.keyRoot, modeObj.intervals) : {cls:'chord-pill',label:ch.name};
-      let cls = info.cls + (ch.active ? '' : ' chord-inactive');
+      const isSolo = song.state.soloChord && song.state.soloChord.name === ch.name;
+      let cls = info.cls + (ch.active ? '' : ' chord-inactive') + (isSolo ? ' chord-solo' : '');
       const p = document.createElement('div'); p.className = cls; p.textContent = info.label;
       p.style.cssText = 'cursor:pointer;user-select:none;-webkit-user-select:none;white-space:nowrap;opacity:' + (ch.active?'1':'0.35') + ';';
       p.onclick = () => {
@@ -3435,6 +3473,15 @@ function importSet() {
   renderSetOrder();
   document.getElementById('import-area').style.display = 'none';
   document.getElementById('export-area').style.display = 'none';
+
+  // Auto-parse songs that have chart text but no parsed sections yet
+  songs.forEach(s => {
+    if (s.state.chartText && !s.state.songSections.length) {
+      parseSong(s.id);
+    } else if (s.state.songSections.length) {
+      initSongPanel(s.id);
+    }
+  });
 
   // Switch to first song if any
   if (songs.length) switchTab('song-' + songs[0].id);
