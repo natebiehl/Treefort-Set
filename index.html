@@ -647,6 +647,50 @@
   .copedent-table td.empty { color: var(--text-dim); background: var(--bg); opacity: 0.3; }
 
   /* ══ PARALLEL LINES MODULE ══ */
+  /* ── Carousel ── */
+  .carousel-outer {
+    position: relative;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 1rem;
+  }
+  .carousel-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+  }
+  .carousel-tab {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 7px 14px; flex: 1; text-align: center;
+    border: none; background: transparent;
+    color: var(--text-dim); cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.1s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .carousel-tab.active { color: var(--teal); border-bottom-color: var(--teal); }
+  .carousel-track {
+    display: flex;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .carousel-track::-webkit-scrollbar { display: none; }
+  .carousel-page {
+    flex: 0 0 100%;
+    scroll-snap-align: start;
+    overflow-y: auto;
+    padding: 1rem 0.75rem;
+    max-height: 520px;
+  }
+  .carousel-page.paths-page {
+    /* paths need more height for multiple mini necks */
+    max-height: 600px;
+  }
+
   .pl-module {
     margin-top: 2rem;
     border-top: 1px solid var(--border);
@@ -1076,57 +1120,94 @@ function harmonizeNote(melodyNote, scale, intervalDegrees) {
 const openStrings = {1:'F#',2:'D#',3:'G#',4:'E',5:'B',6:'G#',7:'F#',8:'E',9:'D',10:'B'};
 
 // Absolute MIDI pitch for each open string (standard E9 tuning)
-// MIDI middle C = 60 (C4). Values here are approximate consensus tuning.
 const openStringMidi = {
-  1: 78,  // F#4  (high treble)
-  2: 75,  // D#4 / Eb4
-  3: 68,  // G#3 / Ab3
-  4: 64,  // E3  — NOTE: lower than strings 1&2 despite being string 4
+  1: 78,  // F#4
+  2: 75,  // D#4
+  3: 68,  // G#3
+  4: 64,  // E3
   5: 59,  // B3
-  6: 56,  // G#3 / Ab3  (same pitch class as string 3, one octave lower... actually same octave)
+  6: 56,  // G#3
   7: 54,  // F#3
   8: 52,  // E3
   9: 50,  // D3
-  10: 47, // B2  (bass)
+  10: 47, // B2
 };
 
-// Absolute MIDI pitch of a string at a given fret
 function absPitch(str, fret) { return openStringMidi[str] + fret; }
+function absPitchDist(sA, sB, fret) { return Math.abs(absPitch(sA, fret) - absPitch(sB, fret)); }
 
-// Semitone distance in absolute pitch between two strings at a given fret
-function absPitchDist(sA, sB, fret) {
-  return Math.abs(absPitch(sA, fret) - absPitch(sB, fret));
+// ═══════════════════════════════════════════════════════
+//  AUTHORITATIVE INSTRUMENT DATA — Williams 400 E9
+//  Single source of truth. Do not compute shifts elsewhere.
+// ═══════════════════════════════════════════════════════
+
+// Individual control shifts per string.
+// Each entry: semitones from open when that control is engaged alone.
+const CONTROL_SHIFTS = {
+  1: {RKL:+2},
+  2: {RKL:+1, RKR:-2},
+  3: {B:+1},
+  4: {C:+2, LKL:+1, LKR:-1},
+  5: {A:+2, C:+2, LKV:-1},
+  6: {B:+1, RKL:-2},
+  7: {},
+  8: {LKL:+1, LKR:-1},
+  9: {RKR:-1},
+  10: {A:+2, LKV:-1},
+};
+
+// Non-additive split interactions.
+// When these specific control combinations are engaged together on a string,
+// the result is NOT the sum of individual shifts.
+// Key: "string:control1+control2" (controls alphabetically sorted)
+// Value: total semitone shift from open (the actual physical result)
+const SPLIT_INTERACTIONS = {
+  '4:C+LKL': 2,  // C raises E→F# (+2). LKL does nothing when C is engaged. Additive would give +3 (G).
+};
+
+// THE single authoritative function for note calculation.
+// All engine code must call this — never read CONTROL_SHIFTS directly.
+// controls: array of control names e.g. ['A','LKV'] or [] for open
+function noteAtFret(str, fret, controls) {
+  const active = controls.filter(v => v && v !== 'open');
+  if (active.length === 0) return shiftNote(openStrings[str], fret);
+
+  // Check for a known non-additive interaction
+  const key = str + ':' + [...active].sort().join('+');
+  if (SPLIT_INTERACTIONS.hasOwnProperty(key)) {
+    return shiftNote(openStrings[str], fret + SPLIT_INTERACTIONS[key]);
+  }
+
+  // Default: additive — sum all individual shifts
+  let totalShift = 0;
+  for (const v of active) {
+    if (CONTROL_SHIFTS[str][v] !== undefined) totalShift += CONTROL_SHIFTS[str][v];
+  }
+  return shiftNote(openStrings[str], fret + totalShift);
 }
 
-// Changes: {s: semitones, v: voicing/pedal name}
-const stringChanges = {
-  1:[{s:2,v:'RKL'}],
-  2:[{s:1,v:'RKL'},{s:-2,v:'RKR'}],
-  3:[{s:1,v:'B'}],
-  4:[{s:2,v:'C'},{s:1,v:'LKL'},{s:-1,v:'LKR'}],
-  5:[{s:2,v:'A'},{s:2,v:'C'},{s:-1,v:'LKV'}],
-  6:[{s:1,v:'B'},{s:-2,v:'RKL'}],
-  7:[],
-  8:[{s:1,v:'LKL'},{s:-1,v:'LKR'}],
-  9:[{s:-1,v:'RKR'}],
-  10:[{s:2,v:'A'},{s:-1,v:'LKV'}],
-};
+// Legacy compatibility: stringChanges as a flat array per string.
+// Only used for display/labeling (e.g. copedent table, shape detection).
+// Do NOT use for note calculation — use noteAtFret() instead.
+const stringChanges = Object.fromEntries(
+  Object.entries(CONTROL_SHIFTS).map(([s, ctrls]) => [
+    s, Object.entries(ctrls).map(([v, sh]) => ({v, s: sh}))
+  ])
+);
 
-// Build a map: for each fret, for each string, all reachable notes and which voicing gets them
+// Build a map: for each fret, for each string, all reachable notes per single control.
+// Note: this only covers single controls. Splits are handled by noteAtFret().
 function buildNeckMap() {
-  const map = {}; // map[fret][string] = [{note, voicing}, ...]
+  const map = {};
   for (let fret = 0; fret <= 24; fret++) {
     map[fret] = {};
     for (let s = 1; s <= 10; s++) {
-      const base = shiftNote(openStrings[s], fret);
+      const base = noteAtFret(s, fret, []);
       const entries = [{note:base, voicing:'open'}];
       const seen = new Set([base]);
-      for (const ch of stringChanges[s]) {
-        const n = shiftNote(base, ch.s);
-        if (!seen.has(n)) {
-          seen.add(n);
-          entries.push({note:n, voicing:ch.v});
-        }
+      for (const [v] of Object.entries(CONTROL_SHIFTS[s])) {
+        const n = noteAtFret(s, fret, [v]);
+        if (!seen.has(n)) { seen.add(n); entries.push({note:n, voicing:v}); }
       }
       map[fret][s] = entries;
     }
@@ -1168,6 +1249,9 @@ const VALID_COMBOS = [
   {name:'RKL',        parts:['RKL']},
   {name:'RKR',        parts:['RKR']},
   // Pedal + left knee
+  // Verified same-string splits (physically tested, see williams400_e9_splits_reference.md):
+  //   C+LKL (S4), C+LKR (S4), A+LKV (S5/S10), C+LKV (S5)
+  // All others affect different strings — additive math is safe (no same-string interference possible)
   {name:'A+LKL',      parts:['A','LKL']},
   {name:'A+LKR',      parts:['A','LKR']},
   {name:'A+LKV',      parts:['A','LKV']},
@@ -1184,6 +1268,8 @@ const VALID_COMBOS = [
   {name:'B+C+LKR',    parts:['B','C','LKR']},
   {name:'B+C+LKV',    parts:['B','C','LKV']},
   // Pedal + right knee
+  // Verified same-string split: B+RKL (S6)
+  // All others affect different strings — additive math is safe
   {name:'A+RKL',      parts:['A','RKL']},
   {name:'A+RKR',      parts:['A','RKR']},
   {name:'B+RKL',      parts:['B','RKL']},
@@ -1194,7 +1280,7 @@ const VALID_COMBOS = [
   {name:'A+B+RKR',    parts:['A','B','RKR']},
   {name:'B+C+RKL',    parts:['B','C','RKL']},
   {name:'B+C+RKR',    parts:['B','C','RKR']},
-  // Left + right knee (no pedal)
+  // Left + right knee (no pedal) — always affect different strings, additive math is safe
   {name:'LKL+RKL',    parts:['LKL','RKL']},
   {name:'LKL+RKR',    parts:['LKL','RKR']},
   {name:'LKR+RKL',    parts:['LKR','RKL']},
@@ -1205,16 +1291,9 @@ const VALID_COMBOS = [
 
 // Compute the note each combo produces on each string at a given fret
 function comboNotesAtFret(parts, fret) {
-  const result = {}; // string -> note
+  const result = {};
   for (let s=1; s<=10; s++) {
-    const base = shiftNote(openStrings[s], fret);
-    let totalShift = 0;
-    for (const v of parts) {
-      if (v === 'open') continue;
-      const ch = stringChanges[s].find(c => c.v === v);
-      if (ch) totalShift += ch.s;
-    }
-    result[s] = shiftNote(base, totalShift);
+    result[s] = noteAtFret(s, fret, parts);
   }
   return result;
 }
@@ -1229,8 +1308,8 @@ const PM = {
   9:  { fill:'#043030', line:'#0c7878', label:'#18b0b0' },
   12: { fill:'#302810', line:'#604818', label:'#987028' },
 };
-const FRETS=12, L=72, R=950, T=42, B=290;
-const neckW=R-L, neckH=B-T, DOT_R=13;
+const FRETS=12, L=100, R=930, T=72, B=320;
+const neckW=R-L, neckH=B-T, DOT_R=9;
 
 function fretX(f) {
   if (f===0) return L;
@@ -1254,14 +1333,14 @@ function drawNeckBase() {
   for (let s=1;s<=10;s++) {
     const y=stringY(s), sw=(0.6+(s-1)*0.12).toFixed(2);
     out += `<line x1="${L}" y1="${y}" x2="${R}" y2="${y}" stroke="#284a30" stroke-width="${sw}"/>`;
-    out += `<text x="${L-10}" y="${y+4}" text-anchor="end" font-size="10" font-family="'IBM Plex Mono',monospace" fill="#404038">S${s}</text>`;
-    out += `<text x="${R+8}" y="${y+4}" text-anchor="start" font-size="10" font-family="'IBM Plex Mono',monospace" fill="#383830">${openStrings[s]}</text>`;
+    out += `<text x="${L-18}" y="${y+4}" text-anchor="end" font-size="10" font-family="'IBM Plex Mono',monospace" fill="#404038">S${s}</text>`;
+    out += `<text x="${R+14}" y="${y+4}" text-anchor="start" font-size="10" font-family="'IBM Plex Mono',monospace" fill="#383830">${openStrings[s]}</text>`;
   }
   for (let f=0;f<=FRETS;f++) {
     const x=fretX(f), pm=PM[f];
     const col = pm ? pm.label : '#383830';
     const weight = (f===0||f===12) ? '600' : '400';
-    out += `<text x="${x}" y="${T-12}" text-anchor="middle" font-size="10" font-family="'IBM Plex Mono',monospace" font-weight="${weight}" fill="${col}">${f}</text>`;
+    out += `<text x="${x}" y="${T-30}" text-anchor="middle" font-size="10" font-family="'IBM Plex Mono',monospace" font-weight="${weight}" fill="${col}">${f}</text>`;
   }
   return out;
 }
@@ -1275,13 +1354,13 @@ const activeVoicings = new Set(['open','A','B','A+B','C','LKL','LKR','RKL','RKR'
 function buildData(fret) {
   const data = {};
   for (let s=1;s<=10;s++) {
-    const base = shiftNote(openStrings[s], fret);
+    const base = noteAtFret(s, fret, []);
     const entries = activeVoicings.has('open') ? [{note:base,voicing:'open'}] : [];
     const seen = new Set([base]);
-    for (const ch of stringChanges[s]) {
-      if (!activeVoicings.has(ch.v)) continue;
-      const n = shiftNote(base, ch.s);
-      if (!seen.has(n)) { seen.add(n); entries.push({note:n,voicing:ch.v}); }
+    for (const v of Object.keys(CONTROL_SHIFTS[s])) {
+      if (!activeVoicings.has(v)) continue;
+      const n = noteAtFret(s, fret, [v]);
+      if (!seen.has(n)) { seen.add(n); entries.push({note:n,voicing:v}); }
     }
     data[s] = entries;
   }
@@ -1613,26 +1692,13 @@ function detectKey(chordNames, sectionStarters) {
 // Returns all notes reachable on a single string at a given fret
 // as [{note, voicing}]
 function stringNotesAt(str, fret) {
-  const base = shiftNote(openStrings[str], fret);
-  const results = [{note: base, voicing: 'open'}];
-  const seen = new Set([base]);
-  for (const ch of stringChanges[str]) {
-    const n = shiftNote(base, ch.s);
-    if (!seen.has(n)) { seen.add(n); results.push({note: n, voicing: ch.v}); }
-  }
-  // A+B combined: apply both A and B changes to their respective strings
-  // A affects strings 5,10 — B affects strings 3,6 — no overlap
-  const aChange = stringChanges[str].find(c => c.v === 'A');
-  const bChange = stringChanges[str].find(c => c.v === 'B');
-  if (aChange || bChange) {
-    // This string is affected by A+B — add the combined result
-    const ch = aChange || bChange;
-    const n = shiftNote(base, ch.s);
-    if (!seen.has(n)) { seen.add(n); results.push({note: n, voicing: 'A+B'}); }
-    else {
-      // Note already exists under A or B — also label it as A+B
-      results.push({note: n, voicing: 'A+B'});
-    }
+  // Returns all notes reachable on this string at this fret via single controls.
+  // Uses noteAtFret() as the single source of truth.
+  const results = [{note: noteAtFret(str, fret, []), voicing: 'open'}];
+  const seen = new Set([results[0].note]);
+  for (const v of Object.keys(CONTROL_SHIFTS[str])) {
+    const n = noteAtFret(str, fret, [v]);
+    if (!seen.has(n)) { seen.add(n); results.push({note: n, voicing: v}); }
   }
   return results;
 }
@@ -1771,6 +1837,8 @@ let keyVoicings = new Set(VOICING_ORDER);
 let mapRendered   = false;
 let soloChord     = null; // {name, root, quality} or null
 let fbdNoteMode   = 'note'; // 'note' | 'degree' for fret breakdown dots
+let showChordDots = true;
+let showScaleDots = false;
 let soloSection   = null; // section index being soloed, or null
 
 // ── Build key/mode pickers ────────────────────────────
@@ -1825,7 +1893,7 @@ function liveUpdate() {
 }
 
 // ── Parse button ──────────────────────────────────────
-function parseSong() {
+function _legacyParseSong() {
   const text = document.getElementById('song-paste').value;
   songSections = parseSongText(text);
   if (!songSections.length) { alert('No chords found — check your format.'); return; }
@@ -1904,7 +1972,7 @@ function renderKeyDetection(candidates) {
     ${alts?`<span style="color:var(--text-dim);font-size:10px"> · Alt: ${alts}</span>`:''}`;
 }
 
-function toggleKeyOverride() {
+function _legacyToggleKeyOverride() {
   keyOverride=!keyOverride;
   document.getElementById('key-override-panel').style.display=keyOverride?'':'none';
   document.querySelector('.song-key-override-btn').textContent=keyOverride?'Use Detected':'Override';
@@ -1917,7 +1985,64 @@ function toggleKeyOverride() {
 //   2. it is in the active song's chord tones (activePitchSet)
 // This means every dot on the neck = a note you can reach with
 // your active voicings that belongs to the song's harmony.
+// Check if two voicing names conflict physically
+function voicingsConflict(v1, v2) {
+  if (v1 === v2) return false;
+  // Extract component parts from voicing name
+  const parts1 = v1 === 'open' ? [] : v1.split('+');
+  const parts2 = v2 === 'open' ? [] : v2.split('+');
+  const all = [...parts1, ...parts2];
+  // A and C never together
+  if (all.includes('A') && all.includes('C')) return true;
+  // Left knee: only one of LKL, LKR, LKV
+  const LK = ['LKL','LKR','LKV'];
+  if (LK.filter(k => all.includes(k)).length > 1) return true;
+  // Right knee: only one of RKL, RKR
+  const RK = ['RKL','RKR'];
+  if (RK.filter(k => all.includes(k)).length > 1) return true;
+  return false;
+}
+
+// For a given fret and chord, find the best VALID_COMBO — the one that
+// covers the most chord tones (root weighted extra). Mirrors buildMiniNeckSVG
+// so scoring and rendering use the same engine.
+function chordVoiceabilityAtFret(fret, chordTones, rootNote) {
+  let bestCombo = VALID_COMBOS[0];
+  let bestScore = -1;
+
+  for (const combo of VALID_COMBOS) {
+    // Skip combos that include voicings the user has filtered out
+    const partsActive = combo.parts.every(p => p === 'open' || keyVoicings.has(p));
+    if (!partsActive) continue;
+
+    const notes = comboNotesAtFret(combo.parts, fret);
+    let hits = 0, rootHits = 0;
+    for (let s = 1; s <= 10; s++) {
+      if (chordTones.has(notes[s])) {
+        hits++;
+        if (notes[s] === rootNote) rootHits++;
+      }
+    }
+    const score = hits * 2 + rootHits - (VOICING_COST[combo.name] || 0) * 0.5;
+    if (score > bestScore) { bestScore = score; bestCombo = combo; }
+  }
+
+  // Count unique chord tones hit by the winning combo (not strings — avoid double-counting)
+  const comboNotes = comboNotesAtFret(bestCombo.parts, fret);
+  const uniqueHit = new Set();
+  for (let s = 1; s <= 10; s++) {
+    if (chordTones.has(comboNotes[s])) uniqueHit.add(comboNotes[s]);
+  }
+
+  return { covered: uniqueHit.size, total: chordTones.size, cost: VOICING_COST[bestCombo.name] || 0 };
+}
+
 function scoreFret(fret, scaleNotes, chordToneSet, rootNote, wCoverage, wEase, wChord) {
+  // When song sections exist, score by chord voiceability
+  if (songSections.length) {
+    return scoreFretByChords(fret, wChord);
+  }
+  // Fallback: scale coverage scoring (no song loaded)
   let cov=0, ease=0, chord=0;
   for (let s=1; s<=10; s++) {
     const opts = stringNotesAt(s, fret);
@@ -1933,10 +2058,41 @@ function scoreFret(fret, scaleNotes, chordToneSet, rootNote, wCoverage, wEase, w
     }
   }
   const raw = (cov * wCoverage) + (ease * wEase) + (chord * wChord);
-  // Penalise fret 0 — open position rarely used for melodic playing
-  // (no bar vibrato). Needs to be noticeably better to rank #1.
   const openPenalty = fret === 0 ? raw * 0.35 : 0;
   return raw - openPenalty;
+}
+
+// Score fret by how many of the song's chords can be voiced there
+function scoreFretByChords(fret, wChord) {
+  const sectionsToUse = soloSection !== null
+    ? [songSections[soloSection]].filter(Boolean)
+    : songSections.filter(s => s.active);
+
+  // Collect unique active chords
+  const seen = new Set();
+  const chords = [];
+  for (const sec of sectionsToUse) {
+    for (const ch of sec.chords) {
+      if (!ch.active || seen.has(ch.name)) continue;
+      const p = parseChordName(ch.name);
+      if (p) { seen.add(ch.name); chords.push(p); }
+    }
+  }
+  if (!chords.length) return 0;
+
+  let totalScore = 0;
+  for (const p of chords) {
+    const chordTones = new Set(chordToneNotes(p.root, p.quality));
+    const { covered, total, cost } = chordVoiceabilityAtFret(fret, chordTones, p.root);
+    if (total === 0) continue;
+    const coverage = covered / total;
+    const easiness = cost > 0 ? 1 / (1 + cost * 0.2) : 1;
+    totalScore += coverage * easiness;
+  }
+
+  const avg = totalScore / chords.length;
+  const openPenalty = fret === 0 ? avg * 0.35 : 0;
+  return avg - openPenalty;
 }
 
 // Build the set of pitches present in active sections/chords
@@ -2241,10 +2397,24 @@ function computeKeyMap(songId, wCov, wEase, wChord) {
   if (wEase === undefined) wEase = parseInt(document.getElementById('w-ease-'+(songId||''))?.value || 4);
   if (wChord=== undefined) wChord= parseInt(document.getElementById('w-chord-'+(songId||''))?.value || 5);
 
+  // Find tonic chord open position fret (fret > 0)
+  // The fret where the tonic chord tones are maximally reachable in open position
+  const tonicChordTones = new Set(chordToneNotes(keyRoot, 'maj'));
+  let tonicOpenFret = -1, tonicOpenScore = -1;
+  for (let f = 1; f <= 12; f++) {
+    let hits = 0;
+    for (let s = 1; s <= 10; s++) {
+      const base = shiftNote(openStrings[s], f);
+      if (tonicChordTones.has(base)) hits++;
+    }
+    if (hits > tonicOpenScore) { tonicOpenScore = hits; tonicOpenFret = f; }
+  }
+
   const scores=[];
   for (let f=0;f<=12;f++) {
     let sc = scoreFret(f, scaleNotes, ctSet, keyRoot, wCov, wEase, wChord);
-    if (songSections.length) sc += sectionChordToneBonus(f, scaleNotes, wChord);
+    // Tonic chord open position bonus — significant weight for practical use
+    if (f === tonicOpenFret && tonicOpenFret > 0) sc *= 1.6;
     scores.push({fret:f, score:sc});
   }
   const maxSc   = Math.max(...scores.map(s=>s.score),1);
@@ -2277,7 +2447,32 @@ function computeKeyMap(songId, wCov, wEase, wChord) {
     return `<span class="${cls}">${n}${suffix}</span>`;
   }).join('  ');
 
-  // Top-5 cards
+  // Top-5 cards — each gets the best chord not already claimed by a higher-ranked card
+  const assignedChords = new Set();
+  const cardChords = ranked.map(s => {
+    if (!songSections.length) return null;
+    const sectionsToUse = soloSection !== null
+      ? [songSections[soloSection]].filter(Boolean)
+      : songSections.filter(sec => sec.active);
+    let best = null, bestScore = -1;
+    const seenC = new Set();
+    for (const sec of sectionsToUse) {
+      for (const ch of sec.chords) {
+        if (!ch.active || seenC.has(ch.name)) continue;
+        seenC.add(ch.name);
+        if (assignedChords.has(ch.name)) continue; // skip already assigned
+        const p = parseChordName(ch.name);
+        if (!p) continue;
+        const ct = new Set(chordToneNotes(p.root, p.quality));
+        const {covered, total} = chordVoiceabilityAtFret(s.fret, ct, p.root);
+        const sc = total > 0 ? covered/total : 0;
+        if (sc > bestScore) { bestScore = sc; best = {name:ch.name, parsed:p, score:sc}; }
+      }
+    }
+    if (best) assignedChords.add(best.name);
+    return best;
+  });
+
   const cards = ranked.map((s,i)=>{
     const col=heatColor(s.norm), pct=Math.round(s.norm*100);
     const reachDegrees=[];
@@ -2289,11 +2484,20 @@ function computeKeyMap(songId, wCov, wEase, wChord) {
           const semDist=(noteIdx(o.note)-ri+12)%12;
           reachDegrees.push(diatonicDegreeName(semDist, mode.intervals));
         }
-    return `<div class="key-fret-card" style="border-color:${col}88;border-left:3px solid ${col}">
-      <div class="kfc-rank" style="color:${col}">#${i+1}</div>
-      <div class="kfc-fret" style="color:${col}">Fret ${s.fret}</div>
-      <div class="kfc-score" style="color:var(--text-dim)">${pct}%</div>
-      <div class="kfc-notes">${reachDegrees.join(' ')}</div>
+    const chordAssign = cardChords[i];
+    const miniNeckHtml = chordAssign ? (() => {
+      const {svg} = buildMiniNeckSVG(chordAssign, s.fret, CHORD_COLORS[i % CHORD_COLORS.length], fbdNoteMode);
+      return `<div style="font-size:9px;color:var(--text-dim);text-align:center;margin:4px 0 2px;
+                letter-spacing:0.1em;text-transform:uppercase">${chordAssign.name}</div>${svg}`;
+    })() : '';
+    return `<div class="key-fret-card-wrap" style="flex:0 0 auto;display:flex;flex-direction:column;align-items:center">
+      <div class="key-fret-card" style="border-color:${col}88;border-left:3px solid ${col};width:100%">
+        <div class="kfc-rank" style="color:${col}">#${i+1}</div>
+        <div class="kfc-fret" style="color:${col}">Fret ${s.fret}</div>
+        <div class="kfc-score" style="color:var(--text-dim)">${pct}%</div>
+        <div class="kfc-notes">${reachDegrees.join(' ')}</div>
+      </div>
+      ${miniNeckHtml}
     </div>`;
   }).join('');
 
@@ -2303,15 +2507,23 @@ function computeKeyMap(songId, wCov, wEase, wChord) {
 
   // In solo mode, restrict visible notes to solo chord tones
   // Otherwise restrict to pitches present in active sections
-  const visibleNotes = soloChord
-    ? new Set(chordToneNotes(soloChord.root, soloChord.quality))
-    : (songSections.length ? activePitchSet() : scaleNotes);
-  // If no song loaded, show all scale notes
-  const dotNotes = visibleNotes.size > 0 ? visibleNotes : scaleNotes;
+  // Build dotNotes based on toggle state
+  let dotNotes = new Set();
+  if (showChordDots) {
+    const chordPitches = soloChord
+      ? new Set(chordToneNotes(soloChord.root, soloChord.quality))
+      : (songSections.length ? activePitchSet() : ctSet);
+    chordPitches.forEach(n => dotNotes.add(n));
+  }
+  if (showScaleDots) {
+    scaleNotes.forEach(n => dotNotes.add(n));
+  }
+  if (!dotNotes.size) dotNotes = new Set(); // empty = no dots
   const neckSvg = buildKeyNeck(normed, scaleNotes, dotNotes, ctSet, scaleArr);
 
-  const keyResultEl = document.getElementById('key-result-' + songId);
-  if (!keyResultEl) return;
+  const keyResultEl    = document.getElementById('key-result-top-' + songId);
+  const keyResultMapEl = document.getElementById('key-result-map-' + songId);
+  if (!keyResultEl && !keyResultMapEl) return;
   // Inject scale line above sections
   const scaleHeaderEl = document.getElementById('scale-header-' + songId);
   if (scaleHeaderEl) {
@@ -2324,13 +2536,27 @@ function computeKeyMap(songId, wCov, wEase, wChord) {
       </span>
     </div>`;
   }
-  keyResultEl.innerHTML=`
+  if (keyResultEl) keyResultEl.innerHTML=`
     <div class="key-heat-label">Top 5 positions — long press to see chord voicings</div>
     <div id="fret-breakdown-container-${songId}"></div>
-    <div class="key-fret-cards" id="top5-cards-container-${songId}">${cards}</div>
-    <div class="key-heat-label">Playability heatmap</div>
+    <div class="key-fret-cards" id="top5-cards-container-${songId}">${cards}</div>`;
+
+  if (keyResultMapEl) keyResultMapEl.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:0 0 0.6rem">
+      <div class="key-heat-label" style="margin:0">Playability map</div>
+      <div style="display:flex;gap:6px">
+        <button id="dot-chord-btn-${songId}"
+          onclick="toggleDotLayer(${songId},'chord')"
+          class="fbd-toggle-btn${showChordDots?' active':''}"
+          style="${showChordDots?'border-color:var(--teal);color:var(--teal);':''}">Chord tones</button>
+        <button id="dot-scale-btn-${songId}"
+          onclick="toggleDotLayer(${songId},'scale')"
+          class="fbd-toggle-btn${showScaleDots?' active':''}"
+          style="${showScaleDots?'border-color:var(--teal);color:var(--teal);':''}">Scale tones</button>
+      </div>
+    </div>
     <div class="neck-wrap">
-      <svg id="neck3" viewBox="0 0 980 380" xmlns="http://www.w3.org/2000/svg">${neckSvg}</svg>
+      <svg id="neck3-${songId}" viewBox="0 0 980 420" xmlns="http://www.w3.org/2000/svg">${neckSvg}</svg>
     </div>
     <div class="legend" style="margin-top:0.75rem">
       <div class="legend-item"><svg width="14" height="14" style="flex-shrink:0"><circle cx="7" cy="7" r="6" fill="#555" stroke="#e06060" stroke-width="2.5"/></svg>Root ring</div>
@@ -2341,7 +2567,7 @@ function computeKeyMap(songId, wCov, wEase, wChord) {
       <div class="legend-item"><svg width="14" height="9" style="flex-shrink:0;margin-top:2px"><rect x="0" y="0" width="14" height="9" fill="#888" rx="4.5"/></svg>Lever</div>
     </div>`;
 
-  // Wire long-press on top-5 cards to show fret chord breakdown
+    // Wire long-press on top-5 cards to show fret chord breakdown
   const top5Container = document.getElementById('top5-cards-container-' + songId);
   const breakdownContainer = document.getElementById('fret-breakdown-container-' + songId);
   if (top5Container && breakdownContainer) {
@@ -2388,30 +2614,30 @@ function heatColor(n) {
 function buildKeyNeck(normed, scaleNotes, dotNotes, ctSet, scaleArr) {
   let out = drawNeckBase();
 
-  // Heat overlay — vertical band centered ON each fret line
-  // Width scales with heat, color scales with heat, fret number above scales too
-  for (const {fret,norm} of normed) {
-    if (norm < 0.02) continue;
+  // Ranked fret markers — show top 5 positions only
+  const RANK_COLORS = ['#2ab8a8','#c8a84a','#4a9ee0','#48c870','#888878'];
+  const top5 = [...normed].sort((a,b)=>b.norm-a.norm).slice(0,5);
+  top5.forEach(({fret, norm}, i) => {
     const x   = fretX(fret);
-    const col = heatColor(norm);
-    // Band width: 4px at low heat, 22px at full heat
-    const bw  = Math.round(4 + norm * 36);
-    // Band opacity
-    const op  = (0.18 + norm * 0.52).toFixed(2);
+    const col = RANK_COLORS[i];
+    const bw  = 20;
+    const op  = 0.25;
+    // Subtle band
     out+=`<rect x="${x - bw/2}" y="${T}" width="${bw}" height="${neckH}"
             fill="${col}" opacity="${op}" rx="2"/>`;
-    // Fret number above — override drawNeckBase's grey label with heat-colored sized one
-    // Size: 10px at low, 18px at full heat
-    const fs  = Math.round(10 + norm * 8);
-    const fw  = norm > 0.5 ? '800' : '600';
-    const labelY = T - 12;
-    // White knockout rect so heat label reads cleanly over whatever's behind
-    out+=`<rect x="${x - fs}" y="${labelY - fs * 0.8}" width="${fs * 2}" height="${fs * 1.1}"
-            fill="var(--bg)" opacity="0.7" rx="2"/>`;
+    // Rank label above fret number
+    const labelY = T - 14;
+    // Rank badge (higher up, above fret number)
+    out+=`<rect x="${x - 12}" y="${labelY - 28}" width="24" height="16"
+            fill="${col}" opacity="0.9" rx="3"/>`;
+    out+=`<text x="${x}" y="${labelY - 17}" text-anchor="middle"
+            font-size="10" font-family="'Syne',sans-serif"
+            font-weight="800" fill="#0a0b08">#${i+1}</text>`;
+    // Fret number in rank color — sits below badge, above neck
     out+=`<text x="${x}" y="${labelY}" text-anchor="middle"
-            font-size="${fs}" font-family="'Syne',sans-serif"
-            font-weight="${fw}" fill="${col}">${fret}</text>`;
-  }
+            font-size="13" font-family="'Syne',sans-serif"
+            font-weight="800" fill="${col}">${fret}</text>`;
+  });
 
   // Dot shape helper — circle for open, rounded-square for pedals, pill for levers
   function drawDotShape(cx, cy, r, fill, ringCol, opacity, out2) {
@@ -2445,18 +2671,44 @@ function buildKeyNeck(normed, scaleNotes, dotNotes, ctSet, scaleArr) {
     }
   }
 
-  // Dots
+  // Dots — one dot per note per string, cheapest voicing wins
+  // Includes split combos (VALID_COMBOS) so the map matches the chord breakdown
   for (let fret=0;fret<=12;fret++) {
     const x=fretX(fret);
     for (let s=1;s<=10;s++) {
-      const opts=stringNotesAt(s,fret)
+      // Start with single-control options
+      const allOpts = stringNotesAt(s,fret)
         .filter(o=>dotNotes.has(o.note)&&keyVoicings.has(o.voicing));
+      // Add split combos — check if this string produces a target note under each combo
+      for (const combo of VALID_COMBOS) {
+        if (combo.parts.length < 2) continue; // singles already covered above
+        const partsActive = combo.parts.every(p => p === 'open' || keyVoicings.has(p));
+        if (!partsActive) continue;
+        const note = noteAtFret(s, fret, combo.parts);
+        if (!dotNotes.has(note)) continue;
+        allOpts.push({ note, voicing: combo.name, cost: VOICING_COST[combo.name] ?? 99 });
+      }
+      // Deduplicate: keep only the cheapest voicing per unique note
+      const byNote = {};
+      for (const o of allOpts) {
+        const cost = VOICING_COST[o.voicing] ?? 99;
+        if (!byNote[o.note] || cost < byNote[o.note].cost) byNote[o.note] = {...o, cost};
+      }
+      const opts = Object.values(byNote);
       if (!opts.length) continue;
       const y=stringY(s);
       opts.forEach((o,i)=>{
         const isRoot=o.note===scaleArr[0], isChord=ctSet.has(o.note);
-        // Fill = voicing color
-        const fill = COLORS[o.voicing] || '#888878';
+        // For split combos (not in COLORS), derive color + shape from dominant part
+        // Pedal parts take priority over levers for shape; first known color wins
+        const comboPartsRaw = o.voicing.split('+');
+        const fill = COLORS[o.voicing] || (() => {
+          const knownPart = comboPartsRaw.find(p => COLORS[p]);
+          return knownPart ? COLORS[knownPart] + 'cc' : '#888878';
+        })();
+        // Shape voicing: use 'A' (pedal) if any pedal part, else first lever part, else 'open'
+        const shapeVoicing = COLORS[o.voicing] ? o.voicing
+          : comboPartsRaw.find(p => PEDALS.has(p)) || comboPartsRaw.find(p => LEVERS.has(p)) || 'open';
         // Role ring: red for root, gold for chord tone, none for scale tone
         const ringCol = isRoot ? '#e06060' : isChord ? '#c8a84a' : null;
         const r = DOT_R;
@@ -2473,15 +2725,15 @@ function buildKeyNeck(normed, scaleNotes, dotNotes, ctSet, scaleArr) {
                   stroke="${str}" stroke-width="${sw}"/>`;
           out+=`<line x1="${x}" y1="${oy-ph+2}" x2="${x}" y2="${oy+ph-2}"
                   stroke="#0a0b0888" stroke-width="1"/>`;
-          const topFs = lbl.top.length>2?7:lbl.top.length>1?8:9;
+          const topFs = lbl.top.length>2?6:lbl.top.length>1?7:8;
           const botFs = lbl.bot.length>2?6:lbl.bot.length>1?7:8;
           out+=`<text x="${x-pw/2-1}" y="${oy+0.5}" text-anchor="middle" dominant-baseline="middle"
                   font-size="${topFs}" font-family="'Syne',sans-serif" font-weight="700" fill="#0a0b08">${lbl.top}</text>`;
           out+=`<text x="${x+pw/2+1}" y="${oy+0.5}" text-anchor="middle" dominant-baseline="middle"
                   font-size="${botFs}" font-family="'IBM Plex Mono',monospace" font-weight="600" fill="#0a0b08">${lbl.bot}</text>`;
         } else {
-          out += drawShapeForVoicing(o.voicing, x, oy, r, fill, ringCol, 0.88);
-          const fs = lbl.top.length>2?7:lbl.top.length>1?8:10;
+          out += drawShapeForVoicing(shapeVoicing, x, oy, r, fill, ringCol, 0.88);
+          const fs = lbl.top.length>2?6:lbl.top.length>1?7:8;
           out+=`<text x="${x}" y="${oy+0.5}" text-anchor="middle" dominant-baseline="middle"
                   font-size="${fs}" font-family="'Syne',sans-serif" font-weight="700" fill="#0a0b08">${lbl.top}</text>`;
         }
@@ -2521,7 +2773,9 @@ function defaultSongState() {
     soloSection: null,
     mapRendered: false,
     nodeDisplay: 'note',
-    fbdNoteMode: 'note',
+    fbdNoteMode:     'note',
+    showChordDots:   true,
+    showScaleDots:   false,
   };
 }
 
@@ -2715,8 +2969,19 @@ function buildSongPanelHTML(song) {
       <div id="section-list-${song.id}"></div>
     </div>
 
-    <!-- ══ POSITION BRIDGE MODULE ══ -->
-    <div class="pl-module" id="pl-module-${song.id}" style="display:${st.songSections&&st.songSections.length?'':'none'}">
+    <!-- ══ 3-PAGE CAROUSEL: Paths | Top Positions | Playability Map ══ -->
+    <div class="carousel-outer" id="carousel-outer-${song.id}" style="display:${st.songSections&&st.songSections.length?'':'none'}">
+      <div class="carousel-tabs">
+        <button class="carousel-tab active" onclick="carouselGo(${song.id},0)" id="ctab-0-${song.id}">↑↓ Paths</button>
+        <button class="carousel-tab" onclick="carouselGo(${song.id},1)" id="ctab-1-${song.id}">Top Positions</button>
+        <button class="carousel-tab" onclick="carouselGo(${song.id},2)" id="ctab-2-${song.id}">Playability Map</button>
+      </div>
+      <div style="display:flex;align-items:stretch">
+        <div class="carousel-track" id="carousel-track-${song.id}" style="flex:1;min-width:0">
+
+        <!-- PAGE 0: Pathfinder -->
+        <div class="carousel-page paths-page">
+          <div class="pl-module" id="pl-module-${song.id}" style="margin-top:0;border-top:none;padding-top:0">
       <div class="pl-header">
         <div>
           <div class="pl-title">Position Bridge</div>
@@ -2783,28 +3048,57 @@ function buildSongPanelHTML(song) {
         </div>
       </div>
 
-      <div id="pb-results-${song.id}" style="max-height:420px;overflow-y:auto;overflow-x:hidden;">
+      <div id="pb-results-${song.id}" style="overflow-y:auto;overflow-x:hidden;">
         <div class="pl-empty">Select a landing chord and tap Find Paths</div>
       </div>
-    </div>
+          </div><!-- /pl-module -->
+        </div><!-- /paths page -->
 
-    <!-- Node display toggle -->
-    <div id="key-result-${song.id}"></div>
+        <!-- PAGE 1: Top Positions -->
+        <div class="carousel-page" id="top-pos-page-${song.id}">
+          <div id="key-result-top-${song.id}"></div>
+        </div><!-- /top positions page -->
 
-    <!-- Node label -->
-    <div style="margin:0.75rem 0 1rem">
-      <div class="selector-label" style="margin-bottom:8px">Node label</div>
-      <div class="node-display-toggle" id="node-display-toggle-${song.id}">
-        <button class="node-disp-btn ${st.nodeDisplay==='note'?'active':''}"           data-mode="note"           onclick="setNodeDisplaySong(${song.id},this)">Note</button>
-        <button class="node-disp-btn ${st.nodeDisplay==='voicing'?'active':''}"        data-mode="voicing"        onclick="setNodeDisplaySong(${song.id},this)">Voicing</button>
-        <button class="node-disp-btn ${st.nodeDisplay==='degree'?'active':''}"         data-mode="degree"         onclick="setNodeDisplaySong(${song.id},this)">Degree</button>
-        <button class="node-disp-btn ${st.nodeDisplay==='note-voicing'?'active':''}"   data-mode="note-voicing"   onclick="setNodeDisplaySong(${song.id},this)">Note / Voicing</button>
-        <button class="node-disp-btn ${st.nodeDisplay==='degree-voicing'?'active':''}" data-mode="degree-voicing" onclick="setNodeDisplaySong(${song.id},this)">Degree / Voicing</button>
-      </div>
-    </div>
+        <!-- PAGE 2: Playability Map -->
+        <div class="carousel-page" id="play-map-page-${song.id}">
+          <div id="key-result-map-${song.id}"></div>
+        </div><!-- /playability map page -->
 
-    <!-- Score weights + voicing -->
-    <div class="walk-config" style="margin-top:1.5rem">
+        </div><!-- /carousel-track -->
+        <!-- Node label sidebar -->
+        <div style="border-left:1px solid var(--border);background:var(--bg2);
+                    display:flex;flex-direction:column;padding:8px 6px;gap:4px;
+                    min-width:56px;align-items:stretch">
+          <div id="node-display-toggle-${song.id}" style="display:contents">
+          <div style="font-size:8px;letter-spacing:0.12em;text-transform:uppercase;
+                      color:var(--text-dim);text-align:center;margin-bottom:4px">Node</div>
+          <button class="node-disp-btn ${st.nodeDisplay==='note'?'active':''}"
+            data-mode="note" onclick="setNodeDisplaySong(${song.id},this)"
+            style="padding:8px 4px;font-size:11px;width:100%">Note</button>
+          <button class="node-disp-btn ${st.nodeDisplay==='voicing'?'active':''}"
+            data-mode="voicing" onclick="setNodeDisplaySong(${song.id},this)"
+            style="padding:8px 4px;font-size:11px;width:100%">Voice</button>
+          <button class="node-disp-btn ${st.nodeDisplay==='degree'?'active':''}"
+            data-mode="degree" onclick="setNodeDisplaySong(${song.id},this)"
+            style="padding:8px 4px;font-size:11px;width:100%">Deg</button>
+          <button class="node-disp-btn ${st.nodeDisplay==='note-voicing'?'active':''}"
+            data-mode="note-voicing" onclick="setNodeDisplaySong(${song.id},this)"
+            style="padding:8px 4px;font-size:10px;width:100%">N/V</button>
+          <button class="node-disp-btn ${st.nodeDisplay==='degree-voicing'?'active':''}"
+            data-mode="degree-voicing" onclick="setNodeDisplaySong(${song.id},this)"
+            style="padding:8px 4px;font-size:10px;width:100%">D/V</button>
+          </div><!-- /node-display-toggle -->
+          <div style="width:100%;height:1px;background:var(--border);margin:4px 0"></div>
+          <div style="font-size:8px;letter-spacing:0.1em;text-transform:uppercase;
+                      color:var(--text-dim);text-align:center;margin-bottom:4px">Voicings</div>
+          <div class="voicing-grid" id="key-voicing-grid-${song.id}"
+               style="flex-direction:column;gap:3px;margin:0"></div>
+        </div>
+      </div><!-- /carousel+sidebar wrapper -->
+    </div><!-- /carousel-outer -->
+
+    <!-- Score weights + voicing (hidden, wired by JS) -->
+    <div class="walk-config" style="margin-top:1.5rem;display:none" id="score-weights-${song.id}">
       <div class="config-group">
         <div class="config-label">Score weights</div>
         <div class="key-weight-row">
@@ -2825,7 +3119,7 @@ function buildSongPanelHTML(song) {
       </div>
       <div class="config-group">
         <div class="config-label">Pedals / levers in scoring</div>
-        <div class="voicing-grid" id="key-voicing-grid-${song.id}" style="margin-top:0"></div>
+        <div id="key-voicing-grid-placeholder-${song.id}" style="font-size:9px;color:var(--text-dim)">See map tab</div>
       </div>
     </div>
   `;
@@ -2849,6 +3143,8 @@ function loadSongState(id) {
   mapRendered  = st.mapRendered;
   nodeDisplay  = st.nodeDisplay;
   fbdNoteMode  = st.fbdNoteMode;
+  showChordDots = st.showChordDots !== undefined ? st.showChordDots : true;
+  showScaleDots = st.showScaleDots !== undefined ? st.showScaleDots : false;
   // Restore voicing state
   keyVoicings  = st.keyVoicings || new Set(VOICING_ORDER);
   activeSongId = id;
@@ -2864,7 +3160,7 @@ function saveSongState(id) {
     ...song.state,
     keyRoot, keyMode, songSections: JSON.parse(JSON.stringify(songSections)),
     detectedKey, keyOverride, soloChord, soloSection,
-    mapRendered, nodeDisplay, fbdNoteMode,
+    mapRendered, nodeDisplay, fbdNoteMode, showChordDots, showScaleDots,
     keyVoicings: new Set(keyVoicings),
   };
 }
@@ -3004,7 +3300,8 @@ function liveUpdateSong(id) {
   const song = songs.find(s => s.id === id);
   if (!song) return;
   if (song.state.songSections.length) renderSectionListSong(id);
-  if (song.state.mapRendered) computeKeyMapSong(id);
+  // Recompute map whenever sections exist — keeps carousel pages in sync with solo state
+  if (song.state.songSections.length) computeKeyMapSong(id);
 }
 
 function setNodeDisplaySong(id, btn) {
@@ -3013,7 +3310,8 @@ function setNodeDisplaySong(id, btn) {
   loadSongState(id);
   nodeDisplay = btn.dataset.mode;
   saveSongState(id);
-  liveUpdateSong(id);
+  // Only redraw map — don't call liveUpdateSong which would rewrite top positions
+  if (document.getElementById('key-result-map-' + id)) computeKeyMapSong(id);
 }
 
 function closeKeyOverride(id) {
@@ -3021,6 +3319,44 @@ function closeKeyOverride(id) {
   document.getElementById('key-override-panel-' + id).style.display = 'none';
   const btn = document.querySelector(`#song-key-row-${id} .song-key-override-btn`);
   if (btn) btn.textContent = 'Override';
+}
+
+function carouselGo(id, page) {
+  const track = document.getElementById('carousel-track-' + id);
+  if (!track) return;
+  const pageWidth = track.offsetWidth;
+  track.scrollLeft = page * pageWidth;
+  // Update tab active state
+  for (let i = 0; i < 3; i++) {
+    const t = document.getElementById(`ctab-${i}-${id}`);
+    if (t) t.classList.toggle('active', i === page);
+  }
+}
+
+function toggleDotLayer(id, layer) {
+  loadSongState(id);
+  if (layer === 'chord') showChordDots = !showChordDots;
+  else showScaleDots = !showScaleDots;
+  // Update button styles
+  const cb = document.getElementById('dot-chord-btn-' + id);
+  const sb = document.getElementById('dot-scale-btn-' + id);
+  if (cb) {
+    cb.style.borderColor = showChordDots ? 'var(--teal)' : '';
+    cb.style.color = showChordDots ? 'var(--teal)' : '';
+    cb.classList.toggle('active', showChordDots);
+  }
+  if (sb) {
+    sb.style.borderColor = showScaleDots ? 'var(--teal)' : '';
+    sb.style.color = showScaleDots ? 'var(--teal)' : '';
+    sb.classList.toggle('active', showScaleDots);
+  }
+  saveSongState(id);
+  computeKeyMapSong(id);
+  // Re-apply button states after rerender
+  const cb2 = document.getElementById('dot-chord-btn-' + id);
+  const sb2 = document.getElementById('dot-scale-btn-' + id);
+  if (cb2) { cb2.style.borderColor = showChordDots ? 'var(--teal)' : ''; cb2.style.color = showChordDots ? 'var(--teal)' : ''; cb2.classList.toggle('active', showChordDots); }
+  if (sb2) { sb2.style.borderColor = showScaleDots ? 'var(--teal)' : ''; sb2.style.color = showScaleDots ? 'var(--teal)' : ''; sb2.classList.toggle('active', showScaleDots); }
 }
 
 function toggleChartInput(id) {
@@ -3475,11 +3811,18 @@ function importSet() {
   document.getElementById('export-area').style.display = 'none';
 
   // Auto-parse songs that have chart text but no parsed sections yet
+  // For songs with existing sections, restore full state including map
   songs.forEach(s => {
+    initSongPanel(s.id); // always wire up grids, sliders, voicing buttons first
     if (s.state.chartText && !s.state.songSections.length) {
-      parseSong(s.id);
+      parseSong(s.id); // will parse, detect key, render sections, compute map
     } else if (s.state.songSections.length) {
-      initSongPanel(s.id);
+      // Force map render on import regardless of saved mapRendered state
+      loadSongState(s.id);
+      renderSectionListSong(s.id);
+      if (s.state.detectedKey) renderKeyDetectionSong(s.id, [s.state.detectedKey]);
+      computeKeyMapSong(s.id);
+      showParallelModule(s.id);
     }
   });
 
@@ -3517,13 +3860,12 @@ function diatonicWalk(startNote, scale, numSteps, direction) {
 function notePositionsAtFret(note, fret, allowedVoicings) {
   const positions = [];
   for (let s = 1; s <= 10; s++) {
-    const base = shiftNote(openStrings[s], fret);
-    if (base === note && allowedVoicings.has('open'))
+    if (noteAtFret(s, fret, []) === note && allowedVoicings.has('open'))
       positions.push({ string: s, voicing: 'open', fret });
-    for (const ch of stringChanges[s]) {
-      if (!allowedVoicings.has(ch.v)) continue;
-      if (shiftNote(base, ch.s) === note)
-        positions.push({ string: s, voicing: ch.v, fret });
+    for (const v of Object.keys(CONTROL_SHIFTS[s])) {
+      if (!allowedVoicings.has(v)) continue;
+      if (noteAtFret(s, fret, [v]) === note)
+        positions.push({ string: s, voicing: v, fret });
     }
   }
   return positions;
@@ -3583,14 +3925,13 @@ function findBridgePaths(chordTo, keyRoot, keyModeName,
 
   // Helper: get best voicing for a note on a string at a fret
   function voicingFor(targetNote, str, fret) {
-    const base = shiftNote(openStrings[str], fret);
     const opts = [];
-    if (base === targetNote && allowedVoicings.has('open'))
+    if (noteAtFret(str, fret, []) === targetNote && allowedVoicings.has('open'))
       opts.push({ voicing: 'open', cost: 0 });
-    for (const ch of stringChanges[str]) {
-      if (!allowedVoicings.has(ch.v)) continue;
-      if (shiftNote(base, ch.s) === targetNote)
-        opts.push({ voicing: ch.v, cost: VOICING_COST[ch.v] || 0 });
+    for (const v of Object.keys(CONTROL_SHIFTS[str])) {
+      if (!allowedVoicings.has(v)) continue;
+      if (noteAtFret(str, fret, [v]) === targetNote)
+        opts.push({ voicing: v, cost: VOICING_COST[v] || 0 });
     }
     if (!opts.length) return null;
     return opts.sort((a, b) => a.cost - b.cost)[0];
@@ -3677,7 +4018,7 @@ function findBridgePaths(chordTo, keyRoot, keyModeName,
               } else if (isOvershoot) {
                 // Overshoot: must be past landing in walk direction
                 if (dir === 'up') {
-                  fretMin = toLandFret + 1; fretMax = 12;
+                  fretMin = toLandFret + 1; fretMax = Math.max(24, toLandFret + 3);
                 } else {
                   fretMin = 0; fretMax = Math.max(0, toLandFret - 1);
                 }
@@ -4134,10 +4475,11 @@ function runPositionBridge(id) {
 }
 
 function showParallelModule(id) {
-  const mod = document.getElementById('pl-module-' + id);
-  if (mod) mod.style.display = '';
+  const outer = document.getElementById('carousel-outer-' + id);
+  if (outer) outer.style.display = '';
   pbPopulateChords(id);
   pbAutoFillFrets(id);
+  carouselGo(id, 0);
 }
 
 // ═══════════════════════════════════════════════════════
